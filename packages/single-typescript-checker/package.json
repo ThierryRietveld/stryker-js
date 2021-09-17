@@ -1,0 +1,34 @@
+{
+  "name": "@stryker-mutator/single-typescript-checker",
+  "version": "5.4.0",
+  "description": "> TODO: description",
+  "main": "dist/src/index.js",
+  "author": "Danny Berkelaar <Danny.Berkelaar@infosupport.com>",
+  "homepage": "https://github.com/ThierryRietveld/stryker-js#readme",
+  "dependencies": {
+    "@stryker-mutator/api": "5.4.0",
+    "@stryker-mutator/util": "5.4.0",
+    "@stryker-mutator/typescript-checker": "5.4.0",
+    "semver": "~7.3.2"
+  },
+  "devDependencies": {
+    "@stryker-mutator/test-helpers": "5.4.0",
+    "@types/semver": "~7.3.3"
+  },
+  "peerDependencies": {
+    "@stryker-mutator/core": "~5.4.0",
+    "typescript": "~4.3.5"
+  },
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThierryRietveld/stryker-js.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "stryker": "node ../core/bin/stryker run"
+  },
+  "bugs": {
+    "url": "https://github.com/ThierryRietveld/stryker-js/issues"
+  }
+}
