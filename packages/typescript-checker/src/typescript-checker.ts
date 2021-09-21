@@ -59,6 +59,7 @@ export class TypescriptChecker implements Checker {
    * Starts the typescript compiler and does a dry run
    */
   public async init(): Promise<void> {
+    this.logger.info(__dirname);
     guardTSVersion();
     this.guardTSConfigFileExists();
     this.currentTask = new Task();
@@ -68,6 +69,10 @@ export class TypescriptChecker implements Checker {
         {
           ...ts.sys,
           readFile: (fileName) => {
+            // this.logger.info(fileName);
+            if(fileName === "C:/Users/ThierryR/Dev/stryker-typescript-checker-runner/node_modules/node:buffer/package.json") {
+              return "";
+            }
             const content = this.fs.getFile(fileName)?.content;
             if (content && this.allTSConfigFiles.has(path.resolve(fileName))) {
               return this.adjustTSConfigFile(fileName, content, buildModeEnabled);
@@ -75,7 +80,17 @@ export class TypescriptChecker implements Checker {
             return content;
           },
           watchFile: (filePath: string, callback: ts.FileWatcherCallback) => {
-            this.fs.watchFile(filePath, callback);
+
+            const ignoreFiles = [
+              "c:/users/thierryr/dev/stryker-typescript-checker-runner/node_modules/node:buffer/package.json",
+              "c:/users/thierryr/dev/stryker-typescript-checker-runner/node_modules/@types/node:buffer/package.json",
+            ]
+
+            if(ignoreFiles.includes(filePath)) {
+              console.log("Skipped file");
+            } else {
+              this.fs.watchFile(filePath, callback);
+            }
             return {
               close: () => {
                 delete this.fs.getFile(filePath)!.watcher;
@@ -83,7 +98,9 @@ export class TypescriptChecker implements Checker {
             };
           },
           writeFile: (filePath, data) => {
-            this.fs.writeFile(filePath, data);
+            this.logger.info(filePath);
+            ts.sys.writeFile(filePath, data);
+            // this.fs.writeFile(filePath, data);
           },
           createDirectory: () => {
             // Idle, no need to create directories in the hybrid fs
@@ -107,6 +124,11 @@ export class TypescriptChecker implements Checker {
         (status) => this.logDiagnostic('status')(status),
         (summary) => {
           this.logDiagnostic('summary')(summary);
+          // this.resolveCheckResult();
+          // this.currentTask.resolve({
+          //   status: CheckStatus.CompileError,
+          //   reason: "Error tekst",
+          // });
           summary.code !== FILE_CHANGE_DETECTED_DIAGNOSTIC_CODE && this.resolveCheckResult();
         }
       ),
@@ -139,6 +161,7 @@ export class TypescriptChecker implements Checker {
     if (this.fs.existsInMemory(mutant.fileName)) {
       this.clearCheckState();
       this.fs.mutate(mutant);
+      this.logger.info(this.fs.getFile(mutant.fileName)?.content || "No file found");
       return this.currentTask.promise;
     } else {
       // We allow people to mutate files that are not included in this ts project

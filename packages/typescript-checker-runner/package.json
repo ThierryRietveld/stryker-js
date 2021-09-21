@@ -1,0 +1,25 @@
+{
+  "name": "@stryker-mutator/typescript-checker-runner",
+  "version": "5.4.0",
+  "description": "> TODO: description",
+  "author": "Thierry Rietveld <Thierry.Rietveld@infosupport.com>",
+  "homepage": "https://github.com/ThierryRietveld/stryker-js#readme",
+  "license": "ISC",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "start": "node ./dist/src/index.js",
+    "watch": "npx tsc -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThierryRietveld/stryker-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ThierryRietveld/stryker-js/issues"
+  },
+  "dependencies": {
+    "@stryker-mutator/typescript-checker": "5.4.0",
+    "@stryker-mutator/api": "5.4.0",
+    "@stryker-mutator/core": "5.4.0"
+  }
+}

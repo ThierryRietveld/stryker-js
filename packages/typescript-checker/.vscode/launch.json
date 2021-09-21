@@ -1,6 +1,12 @@
 {
   "version": "0.2.0",
   "configurations": [
+  {
+    "command": "npm run stryker",
+    "name": "Run npm stryker",
+    "request": "launch",
+    "type": "node-terminal"
+  },
     {
       "type": "node",
       "request": "launch",

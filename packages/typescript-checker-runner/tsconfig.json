@@ -1,6 +1,7 @@
-{
+{	
   "compilerOptions": {
-    "strict": true,
+    "outDir": "dist",
+    "rootDir": ".",
     "module": "commonjs",
     "target": "es2019",
     "moduleResolution": "node",
@@ -13,13 +14,10 @@
     "allowJs": false,
     "resolveJsonModule": true,
     "importHelpers": true,
-    // "noUnusedLocals": true,
-    // "noImplicitReturns": true,
     "types": [
       "node"
     ],
-    "lib": [
-      "es2019"
-    ]
-  }
+  },
+  "include": ["src"]
 }
+  

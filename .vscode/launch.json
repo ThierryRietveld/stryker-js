@@ -13,6 +13,13 @@
       "skipFiles": [
         "<node_internals>/**"
       ]
+    },
+    {
+      "localRoot": "${workspaceRoot}/packages/typescript-checker-runner",
+      "command": "npm start",
+      "name": "Run typescript-checker-runner",
+      "request": "launch",
+      "type": "node-terminal"
     }
   ]
 }
