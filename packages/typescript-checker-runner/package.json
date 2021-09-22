@@ -7,7 +7,7 @@
   "license": "ISC",
   "main": "dist/src/index.js",
   "scripts": {
-    "start": "node ./dist/src/index.js",
+    "start": "node ./dist/src/runner.js",
     "watch": "npx tsc -w"
   },
   "repository": {

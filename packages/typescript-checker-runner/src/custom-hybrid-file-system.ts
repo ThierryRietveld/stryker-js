@@ -1,7 +1,7 @@
 import { Mutant } from "@stryker-mutator/api/core";
 import { HybridFileSystem } from "@stryker-mutator/typescript-checker";
 import { Timer } from '@stryker-mutator/core';
-import { NanoSecondsTimer } from "./NanoSecondsTimer";
+import { NanoSecondsTimer } from "./nano-seconds-runner";
 
 
 export class CustomHybridFileSystem extends HybridFileSystem {

@@ -75,7 +75,16 @@ export class TypescriptChecker implements Checker {
             return content;
           },
           watchFile: (filePath: string, callback: ts.FileWatcherCallback) => {
-            this.fs.watchFile(filePath, callback);
+            // Bug - Sometimes the tsc want to watch files that dont exist.
+            const ignoreFiles = [
+              "c:/users/thierryr/dev/stryker-typescript-checker-runner/node_modules/node:buffer/package.json",
+              "c:/users/thierryr/dev/stryker-typescript-checker-runner/node_modules/@types/node:buffer/package.json"
+            ];
+
+            if(!ignoreFiles.includes(filePath)) {
+              this.fs.watchFile(filePath, callback);
+            }
+
             return {
               close: () => {
                 delete this.fs.getFile(filePath)!.watcher;

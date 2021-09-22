@@ -38,4 +38,8 @@ export default class CustomTypescriptChecker implements Checker {
         this.logger.info("Check time: " + timer.getElapsedTimeString())
         return promise;
     }
+
+    dispose() {
+      this.logger.info("Delete checker")
+    }
 }
