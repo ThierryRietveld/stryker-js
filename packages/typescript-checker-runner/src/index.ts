@@ -4,6 +4,9 @@ import { CustomStrykerOptions } from './strykerOptions';
 import fs from 'fs';
 import { Location, Mutant, MutantStatus } from '@stryker-mutator/api/core';
 import { CustomHybridFileSystem } from './CustomHybridFileSystem';
+import { NanoSecondsTimer } from './NanoSecondsTimer';
+
+export { NanoSecondsTimer } from './NanoSecondsTimer';;
 
 // Dependencies
 let logger = new CurstomLogger();
@@ -35,13 +38,15 @@ void async function() {
         }
 
         console.time();
-
+        
         for(let i = 0; i < 10; i++) {
+            const timer = new NanoSecondsTimer();
             const checkResult = await typescriptChecker.check(mutant);
+            console.log("mutant timer:" + timer.getElapsedTimeString())
         }
 
         console.timeEnd();
-        console.log(fileSystem.getElapsedMutateTime());
+        console.log(fileSystem.getElapsedMutateTimeString());
         process.exit(1);
     } catch(error) {
         console.log(error)

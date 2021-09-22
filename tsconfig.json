@@ -12,6 +12,7 @@
     { "path": "packages/cucumber-runner" },
     { "path": "packages/typescript-checker" },
     { "path": "packages/typescript-checker-runner" },
+    { "path": "packages/custom-typescript-checker" },
     { "path": "packages/test-helpers" }
   ]
 }

@@ -9,9 +9,10 @@
   ],  
   "plugins": [
     "../mocha-runner",
-    "../typescript-checker"
+    "../typescript-checker",
+    "../custom-typescript-checker"
   ],
-  "checkers": ["typescript"],
+  "checkers": ["custom-typescript-checker"],
   "dashboard": {},
   "buildCommand": "tsc -b",
   "mochaOptions": {

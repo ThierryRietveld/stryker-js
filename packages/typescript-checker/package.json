@@ -35,7 +35,8 @@
   "dependencies": {
     "@stryker-mutator/api": "5.4.0",
     "@stryker-mutator/util": "5.4.0",
-    "semver": "~7.3.2"
+    "semver": "~7.3.2",
+    "@stryker-mutator/typescript-checker-runner": "5.4.0"
   },
   "devDependencies": {
     "@stryker-mutator/test-helpers": "5.4.0",
