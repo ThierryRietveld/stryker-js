@@ -5,6 +5,7 @@ import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
 import { Checker, CheckResult } from '@stryker-mutator/api/check';
 import { Mutant, StrykerOptions } from '@stryker-mutator/api/core';
 import { NanoSecondsTimer } from '@stryker-mutator/typescript-checker-runner';
+import { CheckerTimeResult, MutantTimes } from '@stryker-mutator/api/check';
 
 customTypescriptCheckerLoggerFactory.inject = tokens(commonTokens.getLogger, commonTokens.target);
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -19,10 +20,13 @@ export function create(injector: Injector<PluginContext>): CustomTypescriptCheck
   return injector.provideFactory(commonTokens.logger, customTypescriptCheckerLoggerFactory, Scope.Transient).provideClass('fs', HybridFileSystem).injectClass(CustomTypescriptChecker);
 }
 
-
 export default class CustomTypescriptChecker implements Checker {
     public static inject = tokens(commonTokens.logger, commonTokens.options, 'fs');
     private typescriptChecker: TypescriptChecker;
+    private checkerTotalTime: number = 0;
+    private checkerAmount: number = 0;
+    private highestCheckTime: number;
+    private mutantTimes: MutantTimes[] = []; 
 
     constructor(private readonly logger: Logger, options: StrykerOptions, fs: HybridFileSystem) {
         this.typescriptChecker = new TypescriptChecker(logger, options, fs);
@@ -33,13 +37,21 @@ export default class CustomTypescriptChecker implements Checker {
     }
 
     async check(mutant: Mutant): Promise<CheckResult> {
-        const timer = new NanoSecondsTimer();
+        const mutantTime: MutantTimes = {
+          mutant,
+          startTime: Number(process.hrtime.bigint()),
+          endTime: null
+        }
+
         const promise = await this.typescriptChecker.check(mutant);
-        this.logger.info("Check time: " + timer.getElapsedTimeString())
+
+        mutantTime.endTime = Number(process.hrtime.bigint());
+
+        this.mutantTimes.push(mutantTime);
         return promise;
     }
 
-    dispose() {
-      this.logger.info("Delete checker")
+    public async end(): Promise<MutantTimes[]> {
+      return this.mutantTimes;
     }
 }

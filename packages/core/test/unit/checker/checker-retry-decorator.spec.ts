@@ -17,11 +17,13 @@ describe(CheckerRetryDecorator.name, () => {
       init: sinon.stub(),
       check: sinon.stub(),
       dispose: sinon.stub(),
+      end: sinon.stub(),
     };
     innerChecker2 = {
       init: sinon.stub(),
       check: sinon.stub(),
       dispose: sinon.stub(),
+      end: sinon.stub(),
     };
     const checkers = [innerChecker1, innerChecker2];
     sut = new CheckerRetryDecorator(() => checkers.shift()!, testInjector.logger);

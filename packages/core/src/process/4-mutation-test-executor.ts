@@ -5,7 +5,7 @@ import { MutantTestCoverage, MutantResult, StrykerOptions, MutantStatus } from '
 import { MutantRunOptions, TestRunner } from '@stryker-mutator/api/test-runner';
 import { Logger } from '@stryker-mutator/api/logging';
 import { I } from '@stryker-mutator/util';
-import { CheckStatus, Checker, CheckResult, PassedCheckResult } from '@stryker-mutator/api/check';
+import { CheckStatus, Checker, CheckResult, PassedCheckResult, MutantTime } from '@stryker-mutator/api/check';
 
 import { coreTokens } from '../di';
 import { StrictReporter } from '../reporters/strict-reporter';
@@ -91,6 +91,8 @@ export class MutationTestExecutor {
   }
 
   private executeCheck(input$: Observable<MutantTestCoverage>) {
+    // this.checkerPool.end()
+    // const mutantTimes = await Promise.all(await this.checkerPool.end());
     const checkTask$ = this.checkerPool
       .schedule(input$, async (checker, mutant) => {
         const checkResult = await checker.check(mutant);
@@ -103,8 +105,11 @@ export class MutationTestExecutor {
         // Dispose when all checks are completed.
         // This will allow resources to be freed up and more test runners to be spined up.
         tap({
-          complete: () => {
-            this.checkerPool.dispose();
+          complete: async () => {
+            const mutantCheckTimes = await Promise.all(await this.checkerPool.end());
+            // console.log(JSON.stringify(mutantCheckTimes))
+            this.logAvgMutantCheckTimes(mutantCheckTimes)
+            await this.checkerPool.dispose();
             this.concurrencyTokenProvider.freeCheckers();
           },
         }),
@@ -139,6 +144,34 @@ export class MutationTestExecutor {
       hitLimit,
       disableBail: this.options.disableBail,
     };
+  }
+
+  private logAvgMutantCheckTimes(checkerMutantTimes: MutantTime[][]) {
+    // console.log(checkerMutantTimes)
+    let timePerChecker = 0;
+
+    for(let i = 0; i < checkerMutantTimes.length; i++) {
+      let timePerMutant = 0;
+
+      for(let j = 0; j < checkerMutantTimes[i].length; j++) {
+        timePerMutant += this.calcMutantTimeInS(checkerMutantTimes[i][j]);
+      }
+
+      let avgMutentTime = timePerMutant / checkerMutantTimes[i].length;
+      timePerChecker += avgMutentTime
+      // console.log(`Checker average mutant time ${avgMutentTime}`)
+    }
+    this.log.info(`Average mutant time ${timePerChecker / checkerMutantTimes.length} seconds`);
+  }
+
+  private calcMutantTimeInS(mutantTime: MutantTime): number {
+    if(!mutantTime.endTime) {
+      return -1;
+    }
+
+    const endTime = mutantTime.endTime || 0;
+
+    return (endTime - mutantTime.startTime) / 1000000000;
   }
 
   private logDone() {

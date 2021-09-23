@@ -1,4 +1,4 @@
-import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
+import { Checker, CheckerTimeResult, CheckResult, CheckStatus, MutantTime } from '@stryker-mutator/api/check';
 import { StrykerOptions, Mutant } from '@stryker-mutator/api/core';
 import { PluginKind, tokens, commonTokens, PluginContext, Injector } from '@stryker-mutator/api/plugin';
 import { StrykerError } from '@stryker-mutator/util';
@@ -30,5 +30,12 @@ export class CheckerWorker implements Checker {
       }
     }
     return { status: CheckStatus.Passed };
+  }
+
+  public end(): Promise<MutantTime[]> {
+    for (const { checker } of this.innerCheckers) {
+      return checker.end?.() || Promise.resolve([]);
+    }
+    return Promise.resolve([]);
   }
 }

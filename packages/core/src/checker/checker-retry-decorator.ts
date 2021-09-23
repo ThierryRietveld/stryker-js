@@ -1,4 +1,4 @@
-import { CheckResult } from '@stryker-mutator/api/check';
+import { CheckerTimeResult, CheckResult, MutantTime } from '@stryker-mutator/api/check';
 import { Mutant } from '@stryker-mutator/api/core';
 import { Logger } from '@stryker-mutator/api/logging';
 
@@ -29,5 +29,9 @@ export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> im
         throw error; //oops
       }
     }
+  }
+
+  public async end(): Promise<MutantTime[]> {
+    return this.innerResource.end?.() || [];
   }
 }

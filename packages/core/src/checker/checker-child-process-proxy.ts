@@ -1,4 +1,4 @@
-import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
+import { Checker, CheckerTimeResult, CheckResult, CheckStatus, MutantTime } from '@stryker-mutator/api/check';
 import { Mutant, StrykerOptions } from '@stryker-mutator/api/core';
 import { Disposable } from 'typed-inject';
 
@@ -30,5 +30,9 @@ export class CheckerChildProcessProxy implements Checker, Disposable, Resource {
     return {
       status: CheckStatus.Passed,
     };
+  }
+  
+  public end(): Promise<MutantTime[]> {
+    return this.childProcess.proxy.end();
   }
 }

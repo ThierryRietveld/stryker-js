@@ -3,7 +3,7 @@ import { mergeMap, filter, shareReplay, tap } from 'rxjs/operators';
 import { notEmpty } from '@stryker-mutator/util';
 import { Disposable, tokens } from 'typed-inject';
 import { TestRunner } from '@stryker-mutator/api/test-runner';
-import { Checker } from '@stryker-mutator/api/check';
+import { Checker, CheckerTimeResult, MutantTime } from '@stryker-mutator/api/check';
 
 import { coreTokens } from '../di';
 
@@ -97,5 +97,14 @@ export class Pool<TResource extends Resource> implements Disposable {
   public async dispose(): Promise<void> {
     this.isDisposed = true;
     await Promise.all(this.createdResources.map((resource) => resource.dispose?.()));
+  }
+
+  public async end(): Promise<MutantTime[][]> {
+    const results: MutantTime[][] = [];
+
+    // @ts-ignore
+    await Promise.all(this.createdResources.map((resource) => results.push(resource.end())));
+
+    return results;
   }
 }
