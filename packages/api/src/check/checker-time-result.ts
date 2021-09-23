@@ -9,6 +9,5 @@ export interface CheckerTimeResult {
 
 export interface MutantTime {
     mutant: Mutant;
-    startTime: number;
-    endTime?: number;
+    timeInS: number;
 }

@@ -13,6 +13,7 @@ import { MutationTestReportHelper } from '../reporters/mutation-test-report-help
 import { Timer } from '../utils/timer';
 import { Pool, ConcurrencyTokenProvider } from '../concurrent';
 import { Sandbox } from '../sandbox';
+import fs from 'fs';
 
 import { DryRunContext } from './3-dry-run-executor';
 
@@ -107,7 +108,7 @@ export class MutationTestExecutor {
         tap({
           complete: async () => {
             const mutantCheckTimes = await Promise.all(await this.checkerPool.end());
-            // console.log(JSON.stringify(mutantCheckTimes))
+            this.writeJsonReportFile(JSON.stringify(mutantCheckTimes))
             this.logAvgMutantCheckTimes(mutantCheckTimes)
             await this.checkerPool.dispose();
             this.concurrencyTokenProvider.freeCheckers();
@@ -154,7 +155,7 @@ export class MutationTestExecutor {
       let timePerMutant = 0;
 
       for(let j = 0; j < checkerMutantTimes[i].length; j++) {
-        timePerMutant += this.calcMutantTimeInS(checkerMutantTimes[i][j]);
+        timePerMutant += checkerMutantTimes[i][j].timeInS;
       }
 
       let avgMutentTime = timePerMutant / checkerMutantTimes[i].length;
@@ -164,14 +165,17 @@ export class MutationTestExecutor {
     this.log.info(`Average mutant time ${timePerChecker / checkerMutantTimes.length} seconds`);
   }
 
-  private calcMutantTimeInS(mutantTime: MutantTime): number {
-    if(!mutantTime.endTime) {
-      return -1;
-    }
+  private writeJsonReportFile(content: string) {
+    fs.mkdir('./reports', { recursive: true }, (err) => {
+      if (err) throw err;
+      try {
+        const data = fs.writeFileSync(`./reports/checkerTimes-${new Date().getTime()}.json`, content)
+        //file written successfully
+      } catch (err) {
+        console.error(err)
+      }
+    });
 
-    const endTime = mutantTime.endTime || 0;
-
-    return (endTime - mutantTime.startTime) / 1000000000;
   }
 
   private logDone() {

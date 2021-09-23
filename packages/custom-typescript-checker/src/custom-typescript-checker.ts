@@ -5,7 +5,7 @@ import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
 import { Checker, CheckResult } from '@stryker-mutator/api/check';
 import { Mutant, StrykerOptions } from '@stryker-mutator/api/core';
 import { NanoSecondsTimer } from '@stryker-mutator/typescript-checker-runner';
-import { CheckerTimeResult, MutantTimes } from '@stryker-mutator/api/check';
+import { CheckerTimeResult, MutantTime } from '@stryker-mutator/api/check';
 
 customTypescriptCheckerLoggerFactory.inject = tokens(commonTokens.getLogger, commonTokens.target);
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -26,7 +26,7 @@ export default class CustomTypescriptChecker implements Checker {
     private checkerTotalTime: number = 0;
     private checkerAmount: number = 0;
     private highestCheckTime: number;
-    private mutantTimes: MutantTimes[] = []; 
+    private mutantTimes: MutantTime[] = []; 
 
     constructor(private readonly logger: Logger, options: StrykerOptions, fs: HybridFileSystem) {
         this.typescriptChecker = new TypescriptChecker(logger, options, fs);
@@ -37,21 +37,24 @@ export default class CustomTypescriptChecker implements Checker {
     }
 
     async check(mutant: Mutant): Promise<CheckResult> {
-        const mutantTime: MutantTimes = {
+        const mutantTime: MutantTime = {
           mutant,
-          startTime: Number(process.hrtime.bigint()),
-          endTime: null
+          timeInS: -1
         }
+
+        const startTime = Number(process.hrtime.bigint());
 
         const promise = await this.typescriptChecker.check(mutant);
 
-        mutantTime.endTime = Number(process.hrtime.bigint());
+        const endTime = Number(process.hrtime.bigint());
+
+        mutantTime.timeInS = (endTime - startTime) / 1000000000;
 
         this.mutantTimes.push(mutantTime);
         return promise;
     }
 
-    public async end(): Promise<MutantTimes[]> {
+    public async end(): Promise<MutantTime[]> {
       return this.mutantTimes;
     }
 }
