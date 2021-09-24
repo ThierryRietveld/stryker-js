@@ -14,6 +14,7 @@ import { Timer } from '../utils/timer';
 import { Pool, ConcurrencyTokenProvider } from '../concurrent';
 import { Sandbox } from '../sandbox';
 import fs from 'fs';
+import ts from 'typescript';
 
 import { DryRunContext } from './3-dry-run-executor';
 
@@ -22,6 +23,14 @@ export interface MutationTestContext extends DryRunContext {
   [coreTokens.timeOverheadMS]: number;
   [coreTokens.mutationTestReportHelper]: MutationTestReportHelper;
   [coreTokens.mutantsWithTestCoverage]: MutantTestCoverage[];
+}
+
+interface JsonReport {
+  checkerInfo: any,
+  checkers: MutantTime[][];
+  strykerOptions: StrykerOptions;
+  tsConfigPackage: string;
+  tsConfigRoot: string;
 }
 
 /**
@@ -92,8 +101,7 @@ export class MutationTestExecutor {
   }
 
   private executeCheck(input$: Observable<MutantTestCoverage>) {
-    // this.checkerPool.end()
-    // const mutantTimes = await Promise.all(await this.checkerPool.end());
+    // this.readTsConfigFile("./tsconfig.src.json");
     const checkTask$ = this.checkerPool
       .schedule(input$, async (checker, mutant) => {
         const checkResult = await checker.check(mutant);
@@ -107,9 +115,22 @@ export class MutationTestExecutor {
         // This will allow resources to be freed up and more test runners to be spined up.
         tap({
           complete: async () => {
-            const mutantCheckTimes = await Promise.all(await this.checkerPool.end());
-            this.writeJsonReportFile(JSON.stringify(mutantCheckTimes))
-            this.logAvgMutantCheckTimes(mutantCheckTimes)
+            let report: JsonReport = {
+              checkerInfo: {},
+              checkers: await Promise.all(await this.checkerPool.end()),
+              strykerOptions: this.options,
+              tsConfigPackage: this.readTsConfigFile("./tsconfig.src.json"),
+              tsConfigRoot: this.readTsConfigFile("../../tsconfig.settings.json")
+            };
+
+            report.checkerInfo.totalCheckTime = this.getTotalCheckTime(report.checkers);
+            report.checkerInfo.checkTimeAvgPerChecker = this.getCheckTimePerChecker(report.checkers);
+            report.checkerInfo.checkTimeTotalPerChecker = this.getCheckTimeTotalPerChecker(report.checkers);
+
+            this.writeJsonReportFile(JSON.stringify(report));
+            console.log(report)
+            this.logAvgMutantCheckTimes(report.checkers);
+
             await this.checkerPool.dispose();
             this.concurrencyTokenProvider.freeCheckers();
           },
@@ -124,6 +145,63 @@ export class MutationTestExecutor {
     );
     const passedMutant$ = passedCheckResult$.pipe(map(({ mutant }) => mutant));
     return { checkResult$, passedMutant$ };
+  }
+
+  private getCheckTimeTotalPerChecker(checkers: MutantTime[][]): any {
+    let timeArr = [];
+
+    for(let i = 0; i < checkers.length; i++) {
+      let checkTime = 0;
+
+      for(let j = 0; j < checkers[i].length; j++) {
+        checkTime += checkers[i][j].timeInS;
+      }
+
+      timeArr.push(checkTime);
+    }
+
+    return timeArr;
+  }
+
+  private getCheckTimePerChecker(checkers: MutantTime[][]): number[] {
+    let timeArr = [];
+
+    for(let i = 0; i < checkers.length; i++) {
+      let checkTime = 0;
+
+      for(let j = 0; j < checkers[i].length; j++) {
+        checkTime += checkers[i][j].timeInS;
+      }
+
+      timeArr.push(checkTime / checkers[i].length);
+    }
+
+    return timeArr;
+  }
+
+  private getTotalCheckTime(checkers: MutantTime[][]): number {
+    let time = 0;
+
+    for(let i = 0; i < checkers.length; i++) {
+
+      for(let j = 0; j < checkers[i].length; j++) {
+        time += checkers[i][j].timeInS;
+      }
+
+    }
+
+    return time;
+  }
+
+  private readTsConfigFile(tsFilePath: string): string {
+    const configFile = ts.readConfigFile(tsFilePath, ts.sys.readFile);
+    const compilerOptions = ts.parseJsonConfigFileContent(
+      configFile.config,
+      ts.sys,
+      "./"
+    );
+
+    return JSON.stringify(configFile.config);
   }
 
   private executeRunInTestRunner(input$: Observable<MutantTestCoverage>): Observable<MutantResult> {

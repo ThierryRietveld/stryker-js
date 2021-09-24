@@ -56,6 +56,7 @@
     "stryker": "./bin/stryker"
   },
   "dependencies": {
+    "typescript": ">=3.6",
     "@stryker-mutator/api": "5.4.0",
     "@stryker-mutator/instrumenter": "5.4.0",
     "@stryker-mutator/util": "5.4.0",
