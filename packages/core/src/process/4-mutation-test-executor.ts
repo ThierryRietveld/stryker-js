@@ -26,7 +26,8 @@ export interface MutationTestContext extends DryRunContext {
 }
 
 interface JsonReport {
-  checkerInfo: any,
+  testRunnerTimes: any;
+  checkerInfo: any;
   checkers: MutantTime[][];
   strykerOptions: StrykerOptions;
   tsConfigPackage: string;
@@ -57,6 +58,9 @@ export class MutationTestExecutor {
     coreTokens.concurrencyTokenProvider
   );
 
+  private testRunnerTimings: any[] = [];
+  private report: JsonReport;
+
   constructor(
     private readonly options: StrykerOptions,
     private readonly reporter: StrictReporter,
@@ -69,7 +73,16 @@ export class MutationTestExecutor {
     private readonly log: Logger,
     private readonly timer: I<Timer>,
     private readonly concurrencyTokenProvider: I<ConcurrencyTokenProvider>
-  ) {}
+  ) {
+    this.report = {
+      testRunnerTimes: [],
+      checkerInfo: {},
+      checkers: [],
+      strykerOptions: this.options,
+      tsConfigPackage: this.readTsConfigFile("./tsconfig.src.json"),
+      tsConfigRoot: this.readTsConfigFile("../../tsconfig.settings.json")
+    }
+  }
 
   public async execute(): Promise<MutantResult[]> {
     const { ignoredResult$, notIgnoredMutant$ } = this.executeIgnore(from(this.matchedMutants));
@@ -79,6 +92,9 @@ export class MutationTestExecutor {
     const results = await lastValueFrom(merge(testRunnerResult$, checkResult$, noCoverageResult$, ignoredResult$).pipe(toArray()));
     this.mutationTestReportHelper.reportAll(results);
     await this.reporter.wrapUp();
+
+    this.writeJsonReportFile(JSON.stringify(this.report));
+
     this.logDone();
     return results;
   }
@@ -115,21 +131,14 @@ export class MutationTestExecutor {
         // This will allow resources to be freed up and more test runners to be spined up.
         tap({
           complete: async () => {
-            let report: JsonReport = {
-              checkerInfo: {},
-              checkers: await Promise.all(await this.checkerPool.end()),
-              strykerOptions: this.options,
-              tsConfigPackage: this.readTsConfigFile("./tsconfig.src.json"),
-              tsConfigRoot: this.readTsConfigFile("../../tsconfig.settings.json")
-            };
+            this.report.checkers = await Promise.all(await this.checkerPool.end());
 
-            report.checkerInfo.totalCheckTime = this.getTotalCheckTime(report.checkers);
-            report.checkerInfo.checkTimeAvgPerChecker = this.getCheckTimePerChecker(report.checkers);
-            report.checkerInfo.checkTimeTotalPerChecker = this.getCheckTimeTotalPerChecker(report.checkers);
+            this.report.checkerInfo.totalCheckTime = this.getTotalCheckTime(this.report.checkers);
+            this.report.checkerInfo.checkTimeAvgPerChecker = this.getCheckTimePerChecker(this.report.checkers);
+            this.report.checkerInfo.checkTimeTotalPerChecker = this.getCheckTimeTotalPerChecker(this.report.checkers);
 
-            this.writeJsonReportFile(JSON.stringify(report));
-            console.log(report)
-            this.logAvgMutantCheckTimes(report.checkers);
+            console.log(this.report)
+            this.logAvgMutantCheckTimes(this.report.checkers);
 
             await this.checkerPool.dispose();
             this.concurrencyTokenProvider.freeCheckers();
@@ -207,7 +216,12 @@ export class MutationTestExecutor {
   private executeRunInTestRunner(input$: Observable<MutantTestCoverage>): Observable<MutantResult> {
     return this.testRunnerPool.schedule(input$, async (testRunner, mutant) => {
       const mutantRunOptions = this.createMutantRunOptions(mutant);
+      const time = process.hrtime.bigint();
       const result = await testRunner.mutantRun(mutantRunOptions);
+      this.report.testRunnerTimes.push({
+        time: Number(process.hrtime.bigint() - time) / 1000000000,
+        mutant: mutant.id
+      })
       return this.mutationTestReportHelper.reportMutantRunResult(mutant, result);
     });
   }
