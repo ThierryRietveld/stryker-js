@@ -34,7 +34,6 @@ export class Instrumenter {
       transform(ast, mutantCollector, { options: { ...options, mutationRanges: options.mutationRanges.map(toBabelLineNumber) } });
       const mutatedContent = print(ast);
       outFiles.push(new File(file.name, mutatedContent));
-      
       if (this.logger.isDebugEnabled()) {
         const nrOfMutantsInFile = mutantCollector.mutants.length - mutantCount;
         mutantCount = mutantCollector.mutants.length;

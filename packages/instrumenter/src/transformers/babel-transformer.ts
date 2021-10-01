@@ -13,8 +13,13 @@ import { Mutable, Mutant } from '../mutant';
 
 import { DirectiveBookkeeper } from './directive-bookkeeper';
 
+import {
+  isArrayExpressionAndHasCustomReturnType,
+  isBlockStatementAndChangesClassMethod,
+  isBlockStatementAndChangesFunctionDeclaration,
+} from './mutant-skip-functions';
+
 import { AstTransformer } from '.';
-import t, { ClassMethod, ClassProperty, FunctionDeclaration, isBlockStatement, TSTypeAnnotation, TSTypeReference, TypeAnnotation } from '@babel/types';
 
 interface MutantsPlacement<TNode extends types.Node> {
   appliedMutants: Map<Mutant, TNode>;
@@ -157,11 +162,10 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
   function* mutate(node: NodePath): Iterable<Mutable> {
     for (const mutator of mutators) {
       for (const replacement of mutator.mutate(node)) {
-
         /**
          * Ignore mutants that we are aware of that resolve in a compile error
          */
-        if(mutantIgnore(node, mutator, replacement)) continue;
+        if (ignoreMutant(node, mutator, replacement)) continue;
 
         yield {
           replacement,
@@ -180,47 +184,11 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
     }
   }
 
-  function mutantIgnore(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
-    if(isBlockStatementAndChangesFunctionDeclaration(node, mutator, replacement)) return true;
-    if(isBlockStatementAndChangesClassMethod(node, mutator, replacement)) return true;
-    if(isArrayExpressionAndHasCustomReturnType(node, mutator, replacement)) return true;
-
-    function isBlockStatementAndChangesFunctionDeclaration(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
-      if(node.type !== 'BlockStatement') return false;
-      if(node.parent.type !== 'FunctionDeclaration') return false;
-      if(!(node.parent as FunctionDeclaration).returnType) return false;
-      if(((node.parent as FunctionDeclaration).returnType as TSTypeAnnotation).typeAnnotation.type === 'TSAnyKeyword') return false;
-
-      return true;
-    }
-
-    function isBlockStatementAndChangesClassMethod(node: NodePath, mutator: NodeMutator, replacement: types.Node) {
-      if(node.type !== 'BlockStatement') return false;
-      if(node.parent.type !== 'ClassMethod') return false;
-      if(!(node.parent as ClassMethod).returnType) return false;
-      if(((node.parent as ClassMethod).returnType as TSTypeAnnotation).typeAnnotation.type === 'TSAnyKeyword') return false;
-
-      return true;
-    }
-
-    function isArrayExpressionAndHasCustomReturnType(node: NodePath, mutator: NodeMutator, replacement: types.Node) {
-      if(node.type !== 'ArrayExpression') return false;
-      if(replacement.type === 'ArrayExpression') {
-        if(replacement.elements.length) {
-          if(replacement.elements[0]?.type === 'StringLiteral') {
-            if(!(node.parent as ClassProperty).typeAnnotation) return false;
-            if(((node.parent as ClassProperty).typeAnnotation as TSTypeAnnotation).typeAnnotation.type !== 'TSAnyKeyword') {
-              return true;
-            }
-          }
-        }
-      }
-
-      return false;
-    }
+  function ignoreMutant(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
+    if (isBlockStatementAndChangesFunctionDeclaration(node, mutator, replacement)) return true;
+    if (isBlockStatementAndChangesClassMethod(node, mutator, replacement)) return true;
+    if (isArrayExpressionAndHasCustomReturnType(node, mutator, replacement)) return true;
 
     return false;
   }
-
-};  
-
+};
