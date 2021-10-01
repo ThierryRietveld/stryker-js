@@ -5,13 +5,14 @@ import fs from 'fs';
 import { Location, Mutant, MutantStatus } from '@stryker-mutator/api/core';
 import { CustomHybridFileSystem } from './custom-hybrid-file-system';
 import { NanoSecondsTimer } from './nano-seconds-runner';
+import { CustomTypescriptChecker } from '@stryker-mutator/custom-typescript-checker';
 
 // Dependencies
 let logger = new CurstomLogger();
 let strykerOptions = new CustomStrykerOptions();
 let fileSystem = new CustomHybridFileSystem(logger);
 
-let typescriptChecker = new TypescriptChecker(logger, strykerOptions, fileSystem);
+let typescriptChecker = new CustomTypescriptChecker(logger, strykerOptions, fileSystem);
 
 void async function() {
 
@@ -35,16 +36,13 @@ void async function() {
             mutatorName: "Test mutant"
         }
 
-        console.time();
-        
         for(let i = 0; i < 10; i++) {
             const timer = new NanoSecondsTimer();
             const checkResult = await typescriptChecker.check(mutant);
             console.log("mutant timer:" + timer.getElapsedTimeString())
         }
-
-        console.timeEnd();
-        console.log(fileSystem.getElapsedMutateTimeString());
+        
+        console.log(JSON.stringify(await typescriptChecker.end()));
         process.exit(1);
     } catch(error) {
         console.log(error)

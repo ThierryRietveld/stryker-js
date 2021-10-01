@@ -12,7 +12,7 @@
     "../typescript-checker",
     "../custom-typescript-checker"
   ],
-  "checkers": ["custom-typescript-checker"],
+  "checkers": ["typescript"],
   "dashboard": {},
   "buildCommand": "tsc -b",
   "mochaOptions": {

@@ -20,6 +20,7 @@
   "dependencies": {
     "@stryker-mutator/typescript-checker": "5.4.0",
     "@stryker-mutator/api": "5.4.0",
-    "@stryker-mutator/core": "5.4.0"
+    "@stryker-mutator/core": "5.4.0",
+    "@stryker-mutator/custom-typescript-checker": "5.4.0"
   }
 }

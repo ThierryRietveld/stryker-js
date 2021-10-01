@@ -20,7 +20,7 @@ export function create(injector: Injector<PluginContext>): CustomTypescriptCheck
   return injector.provideFactory(commonTokens.logger, customTypescriptCheckerLoggerFactory, Scope.Transient).provideClass('fs', HybridFileSystem).injectClass(CustomTypescriptChecker);
 }
 
-export default class CustomTypescriptChecker implements Checker {
+export class CustomTypescriptChecker implements Checker {
     public static inject = tokens(commonTokens.logger, commonTokens.options, 'fs');
     private typescriptChecker: TypescriptChecker;
     private checkerTotalTime: number = 0;
