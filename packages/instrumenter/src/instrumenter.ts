@@ -28,17 +28,20 @@ export class Instrumenter {
     const outFiles: File[] = [];
     let mutantCount = 0;
     const parse = createParser(options);
+
     for await (const file of files) {
       const ast = await parse(file.textContent, file.name);
       transform(ast, mutantCollector, { options: { ...options, mutationRanges: options.mutationRanges.map(toBabelLineNumber) } });
       const mutatedContent = print(ast);
       outFiles.push(new File(file.name, mutatedContent));
+      
       if (this.logger.isDebugEnabled()) {
         const nrOfMutantsInFile = mutantCollector.mutants.length - mutantCount;
         mutantCount = mutantCollector.mutants.length;
         this.logger.debug(`Instrumented ${path.relative(process.cwd(), file.name)} (${nrOfMutantsInFile} mutant(s))`);
       }
     }
+
     const mutants = mutantCollector.mutants.map((mutant) => mutant.toApiMutant());
     this.logger.info('Instrumented %d source file(s) with %d mutant(s)', files.length, mutants.length);
     return {
