@@ -23,6 +23,10 @@ export class CheckerChildProcessProxy implements Checker, Disposable, Resource {
     await this.childProcess?.proxy.init();
   }
 
+  public async initMutants(mutants: Mutant[]): Promise<void> {
+    await this.childProcess?.proxy.initMutants(mutants);
+  }
+
   public async check(mutant: Mutant): Promise<CheckResult> {
     if (this.childProcess) {
       return this.childProcess.proxy.check(mutant);

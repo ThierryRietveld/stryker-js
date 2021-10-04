@@ -13,6 +13,10 @@ export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> im
     super(producer);
   }
 
+  public async initMutants(mutants: Mutant[]): Promise<void> {
+    return await this.innerResource.initMutants?.(mutants);
+  }
+
   public async check(mutant: Mutant): Promise<CheckResult> {
     try {
       return await this.innerResource.check(mutant);

@@ -51,6 +51,7 @@ export function createTestRunnerPoolMock(): sinon.SinonStubbedInstance<Pool<Test
   return {
     dispose: sinon.stub(),
     init: sinon.stub(),
+    initMutants: sinon.stub(),
     schedule: sinon.stub(),
   };
 }
@@ -59,6 +60,7 @@ export function createCheckerPoolMock(): sinon.SinonStubbedInstance<Pool<Checker
   return {
     dispose: sinon.stub(),
     init: sinon.stub(),
+    initMutants: sinon.stub(),
     schedule: sinon.stub(),
   };
 }

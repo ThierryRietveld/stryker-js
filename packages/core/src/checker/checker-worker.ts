@@ -22,6 +22,19 @@ export class CheckerWorker implements Checker {
       }
     }
   }
+
+  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+  public async initMutants(mutants: Mutant[]): Promise<void> {
+    for await (const { name, checker } of this.innerCheckers) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        await checker.initMutants?.(mutants);
+      } catch (error: unknown) {
+        throw new StrykerError(`An error occurred during initialization of the "${name}" checker`, error);
+      }
+    }
+  }
+
   public async check(mutant: Mutant): Promise<CheckResult> {
     for await (const { checker } of this.innerCheckers) {
       const result = await checker.check(mutant);

@@ -49,7 +49,10 @@ export class MutantInstrumenterExecutor {
       .provideFactory(coreTokens.checkerFactory, createCheckerFactory)
       .provideFactory(coreTokens.checkerPool, createCheckerPool);
     const checkerPool = checkerPoolProvider.resolve(coreTokens.checkerPool);
-    await checkerPool.init();
+    await checkerPool.init(); // set dit na sandbox voor single-typescript-checker
+
+    // @ts-expect-error
+    await checkerPool.initMutants(instrumentResult.mutants);
 
     // Feed the sandbox
     const dryRunProvider = checkerPoolProvider

@@ -5,6 +5,8 @@ import { Disposable, tokens } from 'typed-inject';
 import { TestRunner } from '@stryker-mutator/api/test-runner';
 import { Checker } from '@stryker-mutator/api/check';
 
+import { Mutant } from '@stryker-mutator/api/core';
+
 import { coreTokens } from '../di';
 
 const MAX_CONCURRENT_INIT = 2;
@@ -67,6 +69,11 @@ export class Pool<TResource extends Resource> implements Disposable {
    */
   public async init(): Promise<void> {
     await lastValueFrom(this.resource$);
+  }
+
+  public async initMutants(mutants: Mutant[]): Promise<void> {
+    // @ts-expect-error
+    await Promise.all(this.createdResources.map((resource) => resource.initMutants?.(mutants)));
   }
 
   /**
