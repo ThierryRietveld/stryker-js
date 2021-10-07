@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { from, partition, merge, Observable, lastValueFrom } from 'rxjs';
 import { toArray, map, tap, shareReplay } from 'rxjs/operators';
 import { tokens, commonTokens } from '@stryker-mutator/api/plugin';
@@ -7,14 +9,14 @@ import { Logger } from '@stryker-mutator/api/logging';
 import { I } from '@stryker-mutator/util';
 import { CheckStatus, Checker, CheckResult, PassedCheckResult, MutantTime } from '@stryker-mutator/api/check';
 
+import ts from 'typescript';
+
 import { coreTokens } from '../di';
 import { StrictReporter } from '../reporters/strict-reporter';
 import { MutationTestReportHelper } from '../reporters/mutation-test-report-helper';
 import { Timer } from '../utils/timer';
 import { Pool, ConcurrencyTokenProvider } from '../concurrent';
 import { Sandbox } from '../sandbox';
-import fs from 'fs';
-import ts from 'typescript';
 
 import { DryRunContext } from './3-dry-run-executor';
 
@@ -58,7 +60,6 @@ export class MutationTestExecutor {
     coreTokens.concurrencyTokenProvider
   );
 
-  private testRunnerTimings: any[] = [];
   private report: JsonReport;
 
   constructor(
@@ -79,9 +80,9 @@ export class MutationTestExecutor {
       checkerInfo: {},
       checkers: [],
       strykerOptions: this.options,
-      tsConfigPackage: this.readTsConfigFile("./tsconfig.src.json"),
-      tsConfigRoot: this.readTsConfigFile("../../tsconfig.settings.json")
-    }
+      tsConfigPackage: this.readTsConfigFile('./tsconfig.src.json'),
+      tsConfigRoot: this.readTsConfigFile('../../tsconfig.settings.json'),
+    };
   }
 
   public async execute(): Promise<MutantResult[]> {
@@ -137,7 +138,7 @@ export class MutationTestExecutor {
             this.report.checkerInfo.checkTimeAvgPerChecker = this.getCheckTimePerChecker(this.report.checkers);
             this.report.checkerInfo.checkTimeTotalPerChecker = this.getCheckTimeTotalPerChecker(this.report.checkers);
 
-            console.log(this.report)
+            console.log(this.report);
             this.logAvgMutantCheckTimes(this.report.checkers);
 
             await this.checkerPool.dispose();
@@ -157,12 +158,14 @@ export class MutationTestExecutor {
   }
 
   private getCheckTimeTotalPerChecker(checkers: MutantTime[][]): any {
-    let timeArr = [];
+    const timeArr = [];
 
-    for(let i = 0; i < checkers.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < checkers.length; i++) {
       let checkTime = 0;
 
-      for(let j = 0; j < checkers[i].length; j++) {
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let j = 0; j < checkers[i].length; j++) {
         checkTime += checkers[i][j].timeInS;
       }
 
@@ -173,12 +176,14 @@ export class MutationTestExecutor {
   }
 
   private getCheckTimePerChecker(checkers: MutantTime[][]): number[] {
-    let timeArr = [];
+    const timeArr = [];
 
-    for(let i = 0; i < checkers.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < checkers.length; i++) {
       let checkTime = 0;
 
-      for(let j = 0; j < checkers[i].length; j++) {
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let j = 0; j < checkers[i].length; j++) {
         checkTime += checkers[i][j].timeInS;
       }
 
@@ -191,12 +196,12 @@ export class MutationTestExecutor {
   private getTotalCheckTime(checkers: MutantTime[][]): number {
     let time = 0;
 
-    for(let i = 0; i < checkers.length; i++) {
-
-      for(let j = 0; j < checkers[i].length; j++) {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < checkers.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let j = 0; j < checkers[i].length; j++) {
         time += checkers[i][j].timeInS;
       }
-
     }
 
     return time;
@@ -204,11 +209,7 @@ export class MutationTestExecutor {
 
   private readTsConfigFile(tsFilePath: string): string {
     const configFile = ts.readConfigFile(tsFilePath, ts.sys.readFile);
-    const compilerOptions = ts.parseJsonConfigFileContent(
-      configFile.config,
-      ts.sys,
-      "./"
-    );
+    const compilerOptions = ts.parseJsonConfigFileContent(configFile.config, ts.sys, './');
 
     return JSON.stringify(configFile.config);
   }
@@ -220,8 +221,8 @@ export class MutationTestExecutor {
       const result = await testRunner.mutantRun(mutantRunOptions);
       this.report.testRunnerTimes.push({
         time: Number(process.hrtime.bigint() - time) / 1000000000,
-        mutant: mutant.id
-      })
+        mutant: mutant.id,
+      });
       return this.mutationTestReportHelper.reportMutantRunResult(mutant, result);
     });
   }
@@ -243,15 +244,17 @@ export class MutationTestExecutor {
     // console.log(checkerMutantTimes)
     let timePerChecker = 0;
 
-    for(let i = 0; i < checkerMutantTimes.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < checkerMutantTimes.length; i++) {
       let timePerMutant = 0;
 
-      for(let j = 0; j < checkerMutantTimes[i].length; j++) {
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let j = 0; j < checkerMutantTimes[i].length; j++) {
         timePerMutant += checkerMutantTimes[i][j].timeInS;
       }
 
-      let avgMutentTime = timePerMutant / checkerMutantTimes[i].length;
-      timePerChecker += avgMutentTime
+      const avgMutentTime = timePerMutant / checkerMutantTimes[i].length;
+      timePerChecker += avgMutentTime;
       // console.log(`Checker average mutant time ${avgMutentTime}`)
     }
     this.log.info(`Average mutant time ${timePerChecker / checkerMutantTimes.length} seconds`);
@@ -261,13 +264,12 @@ export class MutationTestExecutor {
     fs.mkdir('./reports', { recursive: true }, (err) => {
       if (err) throw err;
       try {
-        const data = fs.writeFileSync(`./reports/checkerTimes-${new Date().getTime()}.json`, content)
+        const data = fs.writeFileSync(`./reports/checkerTimes-${new Date().getTime()}.json`, content);
         //file written successfully
-      } catch (err) {
-        console.error(err)
+      } catch (error) {
+        console.error(error);
       }
     });
-
   }
 
   private logDone() {

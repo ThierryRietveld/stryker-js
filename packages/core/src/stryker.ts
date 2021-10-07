@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { MutantResult, PartialStrykerOptions } from '@stryker-mutator/api/core';
 import { createInjector } from 'typed-inject';
 
@@ -42,6 +44,8 @@ export class Stryker {
         const mutationRunExecutor = mutationRunExecutorInjector.injectClass(MutationTestExecutor);
         const mutantResults = await mutationRunExecutor.execute();
 
+        this.writeJsonReportFile(JSON.stringify(mutantResults.filter((result) => result.status === 'CompileError')));
+
         return mutantResults;
       } catch (error) {
         const log = loggerProvider.resolve(commonTokens.getLogger)(Stryker.name);
@@ -65,5 +69,17 @@ export class Stryker {
       await rootInjector.dispose();
       await LogConfigurator.shutdown();
     }
+  }
+
+  private writeJsonReportFile(content: string) {
+    fs.mkdir('./reports', { recursive: true }, (err) => {
+      if (err) throw err;
+      try {
+        const data = fs.writeFileSync(`./reports/compileErrors-${new Date().getTime()}.json`, content);
+        //file written successfully
+      } catch (error) {
+        console.error(error);
+      }
+    });
   }
 }

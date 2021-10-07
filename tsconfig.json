@@ -13,6 +13,7 @@
     { "path": "packages/typescript-checker" },
     { "path": "packages/typescript-checker-runner" },
     { "path": "packages/custom-typescript-checker" },
-    { "path": "packages/test-helpers" }
+    { "path": "packages/test-helpers" },
+    { "path": "packages/mutant-sandbox" },
   ]
 }

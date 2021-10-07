@@ -5,6 +5,8 @@ import { NodePath, traverse, types } from '@babel/core';
 import { File } from '@babel/core';
 /* eslint-enable @typescript-eslint/no-duplicate-imports */
 
+import ts from 'typescript';
+
 import { allMutators, NodeMutator } from '../mutators';
 import { instrumentationBabelHeader, isImportDeclaration, isTypeNode, locationIncluded, locationOverlaps } from '../util/syntax-helpers';
 import { ScriptFormat } from '../syntax';
@@ -14,9 +16,9 @@ import { Mutable, Mutant } from '../mutant';
 import { DirectiveBookkeeper } from './directive-bookkeeper';
 
 import {
-  isArrayExpressionAndHasCustomReturnType,
-  isBlockStatementAndChangesClassMethod,
+  isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString,
   isBlockStatementAndChangesFunctionDeclaration,
+  isBlockStatementAndChangesMethodDeclaration,
 } from './mutant-skip-functions';
 
 import { AstTransformer } from '.';
@@ -47,6 +49,10 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
 
   // Create the bookkeeper responsible for the // Stryker ... directives
   const directiveBookkeeper = new DirectiveBookkeeper();
+
+  // Read tsconfig files
+  const tsConfigPackage = readTsConfigFile('./tsconfig.src.json');
+  const tsConfigRoot = readTsConfigFile('../../tsconfig.settings.json');
 
   // Now start the actual traversing of the AST
   //
@@ -163,9 +169,9 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
     for (const mutator of mutators) {
       for (const replacement of mutator.mutate(node)) {
         /**
-         * Ignore mutants that we are aware of that resolve in a compile error
+         * Ignore mutants we are aware of that resolve in a compile error
          */
-        if (ignoreMutant(node, mutator, replacement)) continue;
+        // if (ignoreMutant(node, mutator, replacement)) continue;
 
         yield {
           replacement,
@@ -186,9 +192,16 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
 
   function ignoreMutant(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
     if (isBlockStatementAndChangesFunctionDeclaration(node, mutator, replacement)) return true;
-    if (isBlockStatementAndChangesClassMethod(node, mutator, replacement)) return true;
-    if (isArrayExpressionAndHasCustomReturnType(node, mutator, replacement)) return true;
+    if (isBlockStatementAndChangesMethodDeclaration(node, mutator, replacement)) return true;
+    if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
 
     return false;
+  }
+
+  function readTsConfigFile(tsFilePath: string) {
+    const configFile = ts.readConfigFile(tsFilePath, ts.sys.readFile);
+    const compilerOptions = ts.parseJsonConfigFileContent(configFile.config, ts.sys, './');
+
+    return configFile.config;
   }
 };

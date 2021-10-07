@@ -1,0 +1,27 @@
+{
+  "name": "@stryker-mutator/mutator-sandbox",
+  "version": "5.4.0",
+  "description": "> TODO: description",
+  "author": "Thierry Rietveld <Thierry.Rietveld@infosupport.com>",
+  "homepage": "https://github.com/ThierryRietveld/stryker-js#readme",
+  "license": "ISC",
+  "main": "dist/src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThierryRietveld/stryker-js.git"
+  },
+  "scripts": {
+    "stryker": "node ../core/bin/stryker run",
+    "mocha": "mocha",
+    "test": "nyc npm run test:all",
+    "test:all": "npm run test:unit",
+    "test:unit": "mocha 'dist/test/**/*.js' -u bdd",
+    "test:integration": "mocha 'dist/test/integration/**/*.js'"
+  },
+  "bugs": {
+    "url": "https://github.com/ThierryRietveld/stryker-js/issues"
+  },
+  "dependencies": {
+    "@stryker-mutator/test-helpers": "5.4.0"
+  }
+}
