@@ -5,6 +5,12 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "command": "cd packages/mutant-sandbox && npm run stryker",
+      "name": "Run npm mutant-sandbox",
+      "request": "launch",
+      "type": "node-terminal"
+    },
+    {
       "command": "cd packages/cucumber-runner && npm run stryker",
       "name": "Run npm cucumber",
       "request": "launch",

@@ -17,8 +17,7 @@ import { DirectiveBookkeeper } from './directive-bookkeeper';
 
 import {
   isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString,
-  isBlockStatementAndChangesFunctionDeclaration,
-  isBlockStatementAndChangesMethodDeclaration,
+  isBlockStatementAndChangesMethodOrFunctionDeclaration,
 } from './mutant-skip-functions';
 
 import { AstTransformer } from '.';
@@ -171,7 +170,7 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
         /**
          * Ignore mutants we are aware of that resolve in a compile error
          */
-        // if (ignoreMutant(node, mutator, replacement)) continue;
+        if (ignoreMutant(node, mutator, replacement)) continue;
 
         yield {
           replacement,
@@ -191,8 +190,7 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
   }
 
   function ignoreMutant(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
-    if (isBlockStatementAndChangesFunctionDeclaration(node, mutator, replacement)) return true;
-    if (isBlockStatementAndChangesMethodDeclaration(node, mutator, replacement)) return true;
+    if (isBlockStatementAndChangesMethodOrFunctionDeclaration(node, mutator, replacement)) return true;
     if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
 
     return false;

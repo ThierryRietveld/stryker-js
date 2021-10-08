@@ -1,46 +1,71 @@
 import { NodePath, types } from '@babel/core';
-import { ClassProperty, is, TSTypeAnnotation, TSTypeReference } from '@babel/types';
+import {
+  ClassProperty,
+  Identifier,
+  Node,
+  Noop,
+  TSTypeAnnotation,
+  TSTypeParameterInstantiation,
+  TSTypeReference,
+  TypeAnnotation,
+  typeParameter,
+} from '@babel/types';
 
 import { NodeMutator } from '../mutators';
 
-export function isBlockStatementAndChangesFunctionDeclaration(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
-  // If is not a blockstatement
-  if (node.type !== 'BlockStatement') return false;
+// Promise<void>
+// {
+//   returnType: tSTypeAnnotation {
+//     typeAnnotation: tSTypeReference {
+//       typeParameter: tsTypeParameterInstantiation {
+//         params: Node[] {
+//           type: string
+//         }
+//       }
+//     }
+//   }
+// }
 
-  // If is not a function declaration or classmethod
-  if (node.parent.type !== 'FunctionDeclaration') return false;
+// number
+// {
+//   returnType: tSTypeAnnotation {
+//     typeAnnotation: TSNumberKeyword {
+//       type: string
+//     }
+//   }
+// }
 
-  // If has return type
-  if (!node.parent.returnType) return false;
-
-  // If is not return type of any or void
-  if ((node.parent.returnType as TSTypeAnnotation).typeAnnotation.type === 'TSAnyKeyword') return false;
-  if ((node.parent.returnType as TSTypeAnnotation).typeAnnotation.type === 'TSVoidKeyword') return false;
-
-  // If is not a Promise<any> or Promise<void>
-  // TODO
-  // if (((node.parent.returnType as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeName.name === 'TSVoidKeyword') return false;
-
-  return true;
+function nodeHasResturnTypeOfAnyVoidPromiseIterable(returnTypeNode: Node): boolean {
+  if ((returnTypeNode as TSTypeAnnotation).typeAnnotation.type === 'TSTypeReference') {
+    // is generic
+    const typeParameters = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeParameters!;
+    const identifier = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeName as Identifier;
+    if (identifier.name === 'Promise') {
+      if (typeParameters.params.length && typeParameters.params[0].type === 'TSVoidKeyword') return true;
+      if (typeParameters.params.length && typeParameters.params[0].type === 'TSAnyKeyword') return true;
+    }
+    if (identifier.name === 'Iterable') return true;
+  } else {
+    // non generic
+    const type = (returnTypeNode as TSTypeAnnotation).typeAnnotation.type;
+    if (type === 'TSAnyKeyword') return true;
+    if (type === 'TSVoidKeyword') return true;
+  }
+  return false;
 }
 
-export function isBlockStatementAndChangesMethodDeclaration(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
+export function isBlockStatementAndChangesMethodOrFunctionDeclaration(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
   // If is not a blockstatement
   if (node.type !== 'BlockStatement') return false;
 
   // If is not a function declaration or classmethod
-  if (node.parent.type !== 'ClassMethod') return false;
-
-  // If has return type
-  if (!node.parent.returnType) return false;
-
-  // If is not return type of any or void
-  if ((node.parent.returnType as TSTypeAnnotation).typeAnnotation.type === 'TSAnyKeyword') return false;
-  if ((node.parent.returnType as TSTypeAnnotation).typeAnnotation.type === 'TSVoidKeyword') return false;
-
-  // If is not a Promise<any> or Promise<void>
-  // TODO
-  // if (((node.parent.returnType as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeName.name === 'TSVoidKeyword') return false;
+  if (node.parent.type === 'FunctionDeclaration') {
+    if (!node.parent.returnType) return false;
+    return !nodeHasResturnTypeOfAnyVoidPromiseIterable(node.parent.returnType);
+  } else if (node.parent.type === 'ClassMethod') {
+    if (!node.parent.returnType) return false;
+    return !nodeHasResturnTypeOfAnyVoidPromiseIterable(node.parent.returnType);
+  }
 
   return true;
 }
