@@ -4,14 +4,14 @@ import { File } from './memory-file';
 import { toPosixFileName } from './tsconfig-helpers';
 
 export class MemoryFileSystem {
-  private files: Record<string, File> = {};
+  public files: Record<string, File> = {};
 
   public getFile(fileName: string): File {
-    if (this.files[fileName]) {
-      return this.files[fileName];
+    if (this.files[toPosixFileName(fileName)]) {
+      return this.files[toPosixFileName(fileName)];
     }
 
-    return this.getNewFile(fileName);
+    return this.getNewFile(toPosixFileName(fileName));
   }
 
   private getNewFile(fileName: string): File {
@@ -22,26 +22,31 @@ export class MemoryFileSystem {
   }
 
   public writeFile(fileName: string, content: string): File {
-    fileName = fileName.replace(/\\/g, '/');
+    fileName = toPosixFileName(fileName);
     const file = new File(fileName, content);
     this.files[fileName] = file;
     return file;
   }
 
+  public deleteFile(filename: string): void {
+    filename = toPosixFileName(filename);
+    delete this.files[filename];
+  }
+
   public readDirectory(
-    path: string,
+    pathName: string,
     extensions?: readonly string[],
     exclude?: readonly string[],
     include?: readonly string[],
     depth?: number
   ): string[] {
-    const content = ts.sys.readDirectory(path, extensions, exclude, include, depth);
-    path = toPosixFileName(path);
+    const content = ts.sys.readDirectory(pathName, extensions, exclude, include, depth);
+    pathName = toPosixFileName(pathName);
 
     Object.keys(this.files).forEach((fileName) => {
       const posFileName = toPosixFileName(fileName);
       // misschien een apart object bijhouden voor mutated files voor performance
-      if (this.files[fileName].mutated && RegExp(path).exec(posFileName)) {
+      if (this.files[fileName].mutant && RegExp(pathName).exec(posFileName)) {
         content.push(fileName);
       }
     });

@@ -3,16 +3,16 @@ import ts from 'typescript';
 
 export class File {
   private sourceFile: ts.SourceFile | undefined;
-  public mutated = false;
+  public mutant: Mutant | undefined;
 
-  constructor(private readonly fileName: string, public content: string) {}
+  constructor(public readonly fileName: string, public content: string) {}
 
   public write(data: string): void {
     this.content = data;
   }
 
-  public mutate(mutant: Pick<Mutant, 'location' | 'replacement'>): void {
-    this.mutated = true;
+  public mutate(mutant: Mutant): void {
+    this.mutant = mutant;
     const start = this.getOffset(mutant.location.start);
     const end = this.getOffset(mutant.location.end);
     const original = this.content;

@@ -1,6 +1,5 @@
 import { EOL } from 'os';
 
-
 import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 import { tokens, commonTokens, PluginContext, Injector, Scope } from '@stryker-mutator/api/plugin';
 import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
@@ -31,12 +30,11 @@ export class SingleTypescriptChecker implements Checker {
   private readonly mutantErrors: Record<string, ts.Diagnostic[]> = {};
 
   constructor(private readonly logger: Logger, options: StrykerOptions) {
-    this.compiler = new TypescriptCompiler(this.fs, logger, options);
+    this.compiler = new TypescriptCompiler(this.fs, options);
   }
 
   public async init(): Promise<void> {
     // isn't needed because we can find dry run errors beside the mutants
-
     // const errors = await this.compiler.init();
     // this.logger.info(`got ${errors.length} from init`);
     // if (errors.length) {
@@ -45,39 +43,68 @@ export class SingleTypescriptChecker implements Checker {
   }
 
   public async initMutants(mutants: Mutant[]): Promise<void> {
-    this.logger.info('init mutants');
+    this.logger.info(`Init ${mutants.length} mutants`);
 
-    mutants.reverse().forEach((mutant) => {
-      if (!['77', '78'].includes(mutant.id)) return;
+    mutants.forEach((mutant) => {
       const originalFile = this.fs.getFile(mutant.fileName);
-      const mutatedFileName = mutant.fileName.replace('.ts', `-mutated(${mutant.id}).ts`);
+      const mutatedFileName = this.getMutantMutatedFileName(mutant);
       const mutatedFile = this.fs.writeFile(mutatedFileName, originalFile.content);
       mutatedFile.mutate(mutant);
     });
 
-    const errors = await this.compiler.init();
+    const errors = this.compiler.check();
     this.handleErrors(errors);
+    this.handle2488Error(errors, mutants);
+
+    this.logger.info(`Found ${Object.keys(this.mutantErrors).length} compile errors`);
   }
 
-  private handleErrors(errors: ts.Diagnostic[]): void {
+  private handle2488Error(errors: readonly ts.Diagnostic[], allMutants: Mutant[]): void {
+    const changed = errors.some((e) => e.code === 2488);
+
+    if (changed) {
+      allMutants.forEach((mutant) => {
+        const name = this.getMutantMutatedFileName(mutant);
+        if (this.mutantHasError(mutant)) {
+          this.fs.deleteFile(name);
+        }
+      });
+
+      const newErrors = this.compiler.check();
+      this.handleErrors(newErrors);
+      this.handle2488Error(newErrors, allMutants);
+    }
+  }
+
+  private handleErrors(errors: readonly ts.Diagnostic[]): void {
     errors.forEach((error) => {
-      if (!error.file) return;
+      const mutant = this.findMutantFromFile(error.file);
 
-      const regex = /mutated\((\d*)\).ts$/;
-      const match = regex.exec(error.file.fileName);
-
-      if (match) {
-        const id = match[1];
-
-        if (!this.mutantErrors[id]) {
-          this.mutantErrors[id] = [];
+      if (mutant) {
+        if (!this.mutantErrors[mutant.id]) {
+          this.mutantErrors[mutant.id] = [];
         }
 
-        this.mutantErrors[id].push(error);
+        this.mutantErrors[mutant.id].push(error);
       } else {
-        throw new Error('Dry run error');
+        // throw new Error('Dry run error');
       }
     });
+  }
+
+  private mutantHasError(mutant: Mutant): boolean {
+    return !!this.mutantErrors[mutant.id];
+  }
+
+  private getMutantMutatedFileName(mutant: Mutant) {
+    return mutant.fileName.replace('.ts', `-mutated(${mutant.id}).ts`);
+  }
+
+  private findMutantFromFile(sourceFile: ts.SourceFile | undefined): Mutant | null {
+    if (!sourceFile) return null;
+
+    const file = this.fs.getFile(sourceFile.fileName);
+    return file.mutant ?? null;
   }
 
   public async check(mutant: Mutant): Promise<CheckResult> {
