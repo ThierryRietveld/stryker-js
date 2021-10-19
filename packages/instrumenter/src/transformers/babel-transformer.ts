@@ -5,7 +5,9 @@ import { NodePath, traverse, types } from '@babel/core';
 import { File } from '@babel/core';
 /* eslint-enable @typescript-eslint/no-duplicate-imports */
 
-import ts from 'typescript';
+import ts, { transpileModule } from 'typescript';
+
+import * as t from '@babel/types';
 
 import { allMutators, NodeMutator } from '../mutators';
 import { instrumentationBabelHeader, isImportDeclaration, isTypeNode, locationIncluded, locationOverlaps } from '../util/syntax-helpers';
@@ -18,6 +20,7 @@ import { DirectiveBookkeeper } from './directive-bookkeeper';
 import {
   isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString,
   isBlockStatementAndChangesMethodOrFunctionDeclaration,
+  isCheckingNullOrUndifinedOnConditionalExpression,
 } from './mutant-skip-functions';
 
 import { AstTransformer } from '.';
@@ -129,6 +132,16 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
    * Don't traverse import declarations, decorators and nodes that don't have overlap with the selected mutation ranges
    */
   function shouldSkip(path: NodePath) {
+    // if (t.isExpressionStatement(path.node, {})) {
+    //   if (t.isIfStatement(path.parentPath?.parentPath?.node, {})) {
+    //     return true;
+    //   }
+    // }
+
+    if (t.isNullableTypeAnnotation(path, {})) {
+      console.log('sdfsdf');
+    }
+
     return (
       isTypeNode(path) ||
       isImportDeclaration(path) ||
@@ -190,8 +203,9 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
   }
 
   function ignoreMutant(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
-    if (isBlockStatementAndChangesMethodOrFunctionDeclaration(node, mutator, replacement)) return true;
-    if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
+    // if (isBlockStatementAndChangesMethodOrFunctionDeclaration(node, mutator, replacement)) return true;
+    // if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
+    // if (isCheckingNullOrUndifinedOnConditionalExpression(node, mutator, replacement)) return true;
 
     return false;
   }

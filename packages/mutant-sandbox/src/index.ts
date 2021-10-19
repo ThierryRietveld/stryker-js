@@ -1,34 +1,47 @@
-const a: number | null = 2;
+const a = Math.random() ? 'sdf' : null;
+let b: string | null = null;
+b = 'sfd';
 
-class Test {
-  /**
-   * name
-   */
-  public async method(): Promise<void> {
-    console.log();
-  }
-
-  public method2(): string {
-    return '';
-  }
+if (a) {
+  a;
 }
 
-function b(): number {
-  return 3;
-}
+// if (a) console.log();
 
-function c(): any {
-  return 3;
-}
+// if (true) {
+//   console.log();
+// }
+// const sd: number | null = 2;
 
-function d(): void {
-  console.log('2323');
-}
+// class Test {
+//   /**
+//    * name
+//    */
+//   public async method(): Promise<void> {
+//     console.log();
+//   }
 
-function* generator(): Iterable<void> {
-  console.log();
-}
+//   public method2(): string {
+//     return '';
+//   }
+// }
 
-function* generator2(): Iterable<number> {
-  console.log();
-}
+// function b(): number {
+//   return 3;
+// }
+
+// function c(): any {
+//   return 3;
+// }
+
+// function d(): void {
+//   console.log('2323');
+// }
+
+// function* generator(): Iterable<void> {
+//   console.log();
+// }
+
+// function* generator2(): Iterable<number> {
+//   console.log();
+// }

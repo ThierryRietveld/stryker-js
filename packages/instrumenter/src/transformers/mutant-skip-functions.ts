@@ -1,7 +1,10 @@
-import { NodePath, types } from '@babel/core';
+import { NodePath, types, traverse } from '@babel/core';
 import {
+  BlockStatement,
   ClassProperty,
+  ExpressionStatement,
   Identifier,
+  IfStatement,
   Node,
   Noop,
   TSTypeAnnotation,
@@ -10,6 +13,8 @@ import {
   TypeAnnotation,
   typeParameter,
 } from '@babel/types';
+
+import * as t from '@babel/types';
 
 import { NodeMutator } from '../mutators';
 
@@ -35,25 +40,6 @@ import { NodeMutator } from '../mutators';
 //   }
 // }
 
-function nodeHasResturnTypeOfAnyVoidPromiseIterable(returnTypeNode: Node): boolean {
-  if ((returnTypeNode as TSTypeAnnotation).typeAnnotation.type === 'TSTypeReference') {
-    // is generic
-    const typeParameters = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeParameters!;
-    const identifier = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeName as Identifier;
-    if (identifier.name === 'Promise') {
-      if (typeParameters.params.length && typeParameters.params[0].type === 'TSVoidKeyword') return true;
-      if (typeParameters.params.length && typeParameters.params[0].type === 'TSAnyKeyword') return true;
-    }
-    if (identifier.name === 'Iterable') return true;
-  } else {
-    // non generic
-    const type = (returnTypeNode as TSTypeAnnotation).typeAnnotation.type;
-    if (type === 'TSAnyKeyword') return true;
-    if (type === 'TSVoidKeyword') return true;
-  }
-  return false;
-}
-
 export function isBlockStatementAndChangesMethodOrFunctionDeclaration(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
   // If is not a blockstatement
   if (node.type !== 'BlockStatement') return false;
@@ -67,10 +53,33 @@ export function isBlockStatementAndChangesMethodOrFunctionDeclaration(node: Node
     return !nodeHasResturnTypeOfAnyVoidPromiseIterable(node.parent.returnType);
   }
 
-  return true;
+  return false;
+
+  function nodeHasResturnTypeOfAnyVoidPromiseIterable(returnTypeNode: Node): boolean {
+    if ((returnTypeNode as TSTypeAnnotation).typeAnnotation.type === 'TSTypeReference') {
+      // is generic
+      const typeParameters = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeParameters!;
+      const identifier = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeName as Identifier;
+      if (identifier.name === 'Promise') {
+        if (typeParameters.params.length && typeParameters.params[0].type === 'TSVoidKeyword') return true;
+        if (typeParameters.params.length && typeParameters.params[0].type === 'TSAnyKeyword') return true;
+      }
+      if (identifier.name === 'Iterable') return true;
+    } else {
+      // non generic
+      const type = (returnTypeNode as TSTypeAnnotation).typeAnnotation.type;
+      if (type === 'TSAnyKeyword') return true;
+      if (type === 'TSVoidKeyword') return true;
+    }
+    return false;
+  }
 }
 
-export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
+export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(
+  node: NodePath,
+  mutator: NodeMutator,
+  replacement: types.Node
+): boolean {
   if (node.type !== 'ArrayExpression') return false;
   if (replacement.type === 'ArrayExpression') {
     if (replacement.elements.length) {
@@ -84,4 +93,41 @@ export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(n
   }
 
   return false;
+}
+
+export function isCheckingNullOrUndifinedOnConditionalExpression(nodePath: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
+  traverse(
+    nodePath.node,
+    {
+      enter(path) {
+        console.log('path');
+      },
+    },
+    nodePath.scope,
+    null,
+    nodePath.parentPath ?? undefined
+  );
+
+  // if (mutator.name !== 'ConditionalExpression') return false;
+  // if (!['Identifier', 'MemberExpression'].includes(node.type)) return false;
+  // if (!t.isIfStatement(node.container, null)) return false;
+
+  // const ifTester = node.container.test;
+  // const body = node.container.consequent;
+
+  // if (t.isBlockStatement(body, null)) {
+  //   body.body.forEach((childNode) => {
+  //     if (t.isExpressionStatement(childNode, null)) {
+
+  //     }
+  //   })
+  //   console.log('block');
+  // } else if (t.isExpressionStatement(body, null)) {
+  //   body.expression
+  //   console.log('expression');
+  // }
+
+  // If ifstatement body is blockstatement or expressionstatement
+
+  return true;
 }
