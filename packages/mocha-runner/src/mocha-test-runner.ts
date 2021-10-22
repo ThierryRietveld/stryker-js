@@ -12,6 +12,7 @@ import {
   DryRunStatus,
   toMutantRunResult,
   CompleteDryRunResult,
+  determineHitLimitReached,
 } from '@stryker-mutator/api/test-runner';
 
 import { MochaOptions } from '../src-generated/mocha-runner-options';
@@ -27,9 +28,6 @@ export class MochaTestRunner implements TestRunner {
   public rootHooks: any;
   public mochaOptions!: MochaOptions;
   private readonly instrumenterContext: InstrumenterContext;
-  private timer: Date | undefined;
-  private totalStill = 0;
-  private totalMutants = 0;
 
   public static inject = tokens(
     commonTokens.logger,
@@ -81,17 +79,10 @@ export class MochaTestRunner implements TestRunner {
     return runResult;
   }
 
-  public async mutantRun({ activeMutant, testFilter, disableBail }: MutantRunOptions): Promise<MutantRunResult> {
-    // this.log.info('mutant test run ' + activeMutant.id);
-
-    if (this.timer) {
-      const still = new Date().getTime() - this.timer.getTime();
-      this.totalStill += still;
-      this.totalMutants += 1;
-      // this.log.info(`Runner was sitting still for ${still}`);
-    }
-
+  public async mutantRun({ activeMutant, testFilter, disableBail, hitLimit }: MutantRunOptions): Promise<MutantRunResult> {
     this.instrumenterContext.activeMutant = activeMutant.id;
+    this.instrumenterContext.hitLimit = hitLimit;
+    this.instrumenterContext.hitCount = hitLimit ? 0 : undefined;
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     let intercept: (mocha: Mocha) => void = () => {};
     if (testFilter) {
@@ -103,15 +94,7 @@ export class MochaTestRunner implements TestRunner {
     }
     const dryRunResult = await this.run(intercept, disableBail);
     const result = toMutantRunResult(dryRunResult, true);
-    this.timer = new Date();
     return result;
-  }
-
-  public dispose(): Promise<void> {
-    // this.log.info(`Testrunner total time still: ${this.totalStill.toFixed(0)}ms (${this.totalMutants} runs)`);
-    // this.log.info(`Testrunner avg time still: ${(this.totalStill / this.totalMutants).toFixed(0)}ms`);
-
-    return Promise.resolve();
   }
 
   public async run(intercept: (mocha: Mocha) => void, disableBail: boolean): Promise<DryRunResult> {
@@ -136,6 +119,10 @@ export class MochaTestRunner implements TestRunner {
       }
       const reporter = StrykerMochaReporter.currentInstance;
       if (reporter) {
+        const timeoutResult = determineHitLimitReached(this.instrumenterContext.hitCount, this.instrumenterContext.hitLimit);
+        if (timeoutResult) {
+          return timeoutResult;
+        }
         const result: CompleteDryRunResult = {
           status: DryRunStatus.Complete,
           tests: reporter.tests,
