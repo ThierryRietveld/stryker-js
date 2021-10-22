@@ -4,8 +4,8 @@ import { StrykerOptions } from '@stryker-mutator/api/core';
 
 import ts from 'typescript';
 
-import { MemoryFileSystem } from './memory-filesystem';
-import { determineBuildModeEnabled, overrideOptions, retrieveReferencedProjects, toPosixFileName } from './tsconfig-helpers';
+import { MemoryFileSystem } from './fs/memory-filesystem';
+import { determineBuildModeEnabled, overrideOptions, retrieveReferencedProjects, toPosixFileName } from './fs/tsconfig-helpers';
 
 export class TypescriptCompiler {
   /**
@@ -38,7 +38,6 @@ export class TypescriptCompiler {
   public check(): readonly ts.Diagnostic[] {
     const compiler = ts.createSolutionBuilder(this.host, [this.tsconfigFile], {});
     const a = compiler.getNextInvalidatedProject();
-
     if (a?.kind === ts.InvalidatedProjectKind.Build) {
       return a.getSemanticDiagnostics();
     }

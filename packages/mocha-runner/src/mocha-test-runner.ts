@@ -27,6 +27,9 @@ export class MochaTestRunner implements TestRunner {
   public rootHooks: any;
   public mochaOptions!: MochaOptions;
   private readonly instrumenterContext: InstrumenterContext;
+  private timer: Date | undefined;
+  private totalStill = 0;
+  private totalMutants = 0;
 
   public static inject = tokens(
     commonTokens.logger,
@@ -79,6 +82,15 @@ export class MochaTestRunner implements TestRunner {
   }
 
   public async mutantRun({ activeMutant, testFilter, disableBail }: MutantRunOptions): Promise<MutantRunResult> {
+    // this.log.info('mutant test run ' + activeMutant.id);
+
+    if (this.timer) {
+      const still = new Date().getTime() - this.timer.getTime();
+      this.totalStill += still;
+      this.totalMutants += 1;
+      // this.log.info(`Runner was sitting still for ${still}`);
+    }
+
     this.instrumenterContext.activeMutant = activeMutant.id;
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     let intercept: (mocha: Mocha) => void = () => {};
@@ -90,7 +102,16 @@ export class MochaTestRunner implements TestRunner {
       };
     }
     const dryRunResult = await this.run(intercept, disableBail);
-    return toMutantRunResult(dryRunResult, true);
+    const result = toMutantRunResult(dryRunResult, true);
+    this.timer = new Date();
+    return result;
+  }
+
+  public dispose(): Promise<void> {
+    // this.log.info(`Testrunner total time still: ${this.totalStill.toFixed(0)}ms (${this.totalMutants} runs)`);
+    // this.log.info(`Testrunner avg time still: ${(this.totalStill / this.totalMutants).toFixed(0)}ms`);
+
+    return Promise.resolve();
   }
 
   public async run(intercept: (mocha: Mocha) => void, disableBail: boolean): Promise<DryRunResult> {

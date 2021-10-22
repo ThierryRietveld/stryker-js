@@ -51,8 +51,7 @@ export class MutantInstrumenterExecutor {
     const checkerPool = checkerPoolProvider.resolve(coreTokens.checkerPool);
     await checkerPool.init(); // set dit na sandbox voor single-typescript-checker
 
-    // @ts-expect-error
-    await checkerPool.initMutants(instrumentResult.mutants);
+    // await checkerPool.initMutants(instrumentResult.mutants);
 
     // Feed the sandbox
     const dryRunProvider = checkerPoolProvider
@@ -60,7 +59,10 @@ export class MutantInstrumenterExecutor {
       .provideClass(coreTokens.sandbox, Sandbox)
       .provideValue(coreTokens.mutants, instrumentResult.mutants);
     const sandbox = dryRunProvider.resolve(coreTokens.sandbox);
-    await sandbox.init();
+
+    // @ts-expect-error
+    await Promise.all([checkerPool.initMutants(instrumentResult.mutants), sandbox.init()]);
+    console.log('done');
     return dryRunProvider;
   }
 

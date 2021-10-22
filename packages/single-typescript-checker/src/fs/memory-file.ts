@@ -5,7 +5,7 @@ export class File {
   private sourceFile: ts.SourceFile | undefined;
   public mutant: Mutant | undefined;
 
-  constructor(public readonly fileName: string, public content: string) {}
+  constructor(public fileName: string, public content: string) {}
 
   public write(data: string): void {
     this.content = data;

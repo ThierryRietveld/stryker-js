@@ -16,3 +16,5 @@ export const strykerPlugins = [
     cucumberTestRunnerFactory
   ),
 ];
+
+CucumberTestRunner.stringToNotBeString().substr(0, 2);

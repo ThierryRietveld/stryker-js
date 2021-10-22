@@ -43,7 +43,7 @@ export function cucumberTestRunnerFactory(
     .injectClass(CucumberTestRunner);
 }
 
-export class CucumberTestRunner implements TestRunner {
+class CucumberTestRunner implements TestRunner {
   public static inject = tokens(
     commonTokens.logger,
     commonTokens.options,
@@ -62,6 +62,12 @@ export class CucumberTestRunner implements TestRunner {
     this.instrumenterContext =
       global[globalNamespace] ?? (global[globalNamespace] = {});
     StrykerFormatter.instrumenterContext = this.instrumenterContext;
+  }
+
+  static stringToNotBeString() {
+    if (true) {
+      return "";
+    }
   }
 
   private readonly directoryRequireCache = new DirectoryRequireCache();
@@ -177,3 +183,5 @@ export class CucumberTestRunner implements TestRunner {
 function hasFailed(test: TestResult): test is FailedTestResult {
   return test.status === TestStatus.Failed;
 }
+
+export { CucumberTestRunner };
