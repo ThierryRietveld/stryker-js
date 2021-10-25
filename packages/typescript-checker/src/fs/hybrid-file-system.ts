@@ -52,8 +52,6 @@ export class HybridFileSystem {
       // return;
       throw new Error(`Cannot find file ${fileName} for watching`);
     }
-    this.log.trace('Registering watcher for file "%s"', fileName);
-    file.watcher = watcher;
   }
 
   public getFile(fileName: string): ScriptFile | undefined {
