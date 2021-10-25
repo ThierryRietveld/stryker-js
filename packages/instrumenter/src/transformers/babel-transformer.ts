@@ -132,16 +132,6 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
    * Don't traverse import declarations, decorators and nodes that don't have overlap with the selected mutation ranges
    */
   function shouldSkip(path: NodePath) {
-    // if (t.isExpressionStatement(path.node, {})) {
-    //   if (t.isIfStatement(path.parentPath?.parentPath?.node, {})) {
-    //     return true;
-    //   }
-    // }
-
-    if (t.isNullableTypeAnnotation(path, {})) {
-      console.log('sdfsdf');
-    }
-
     return (
       isTypeNode(path) ||
       isImportDeclaration(path) ||
@@ -204,7 +194,7 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
 
   function ignoreMutant(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
     // if (isBlockStatementAndChangesMethodOrFunctionDeclaration(node, mutator, replacement)) return true;
-    // if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
+    if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
     // if (isCheckingNullOrUndifinedOnConditionalExpression(node, mutator, replacement)) return true;
 
     return false;

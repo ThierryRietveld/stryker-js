@@ -79,6 +79,11 @@ export class TypescriptChecker implements Checker {
             const ignoreFiles = [
               'c:/users/thierryr/dev/stryker-typescript-checker-runner/node_modules/node:buffer/package.json',
               'c:/users/thierryr/dev/stryker-typescript-checker-runner/node_modules/@types/node:buffer/package.json',
+              'c:/users/thierryr/dev/stryker-typescript-checker-runner/packages/util/node_modules/assert/package.json',
+              'c:/users/thierryr/dev/stryker-typescript-checker-runner/packages/api/src/core/package.json',
+              'c:/users/thierryr/dev/stryker-typescript-checker-runner/packages/api/node_modules/mutation-testing-report-schema/api/package.json',
+              'c:/users/thierryr/dev/stryker-typescript-checker-runner/packages/api/src/check/package.json',
+              'c:/users/thierryr/dev/stryker-typescript-checker-runner/packages/api/src/logging/package.json',
             ];
 
             if (!ignoreFiles.includes(filePath)) {

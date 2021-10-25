@@ -44,7 +44,7 @@ export class Stryker {
         const mutationRunExecutor = mutationRunExecutorInjector.injectClass(MutationTestExecutor);
         const mutantResults = await mutationRunExecutor.execute();
 
-        this.writeJsonReportFile(JSON.stringify(mutantResults.filter((result) => result.status === 'CompileError')));
+        this.writeJsonReportFile(JSON.stringify(mutantResults));
 
         return mutantResults;
       } catch (error) {
