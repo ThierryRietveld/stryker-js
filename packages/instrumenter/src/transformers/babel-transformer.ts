@@ -5,13 +5,18 @@ import { NodePath, traverse, types } from '@babel/core';
 import { File } from '@babel/core';
 /* eslint-enable @typescript-eslint/no-duplicate-imports */
 
-import { allMutators } from '../mutators';
+import { allMutators, NodeMutator } from '../mutators';
 import { instrumentationBabelHeader, isImportDeclaration, isTypeNode, locationIncluded, locationOverlaps } from '../util/syntax-helpers';
 import { ScriptFormat } from '../syntax';
 import { allMutantPlacers, MutantPlacer, throwPlacementError } from '../mutant-placers';
 import { Mutable, Mutant } from '../mutant';
 
 import { DirectiveBookkeeper } from './directive-bookkeeper';
+
+import {
+  isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString,
+  isBlockStatementAndChangesMethodOrFunctionDeclaration,
+} from './filter-mutant-functions';
 
 import { AstTransformer } from '.';
 
@@ -156,6 +161,11 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
   function* mutate(node: NodePath): Iterable<Mutable> {
     for (const mutator of mutators) {
       for (const replacement of mutator.mutate(node)) {
+        /**
+         * Ignore mutants we are aware of that resolve in a compile error
+         */
+        if (mutantCreatesCompileError(node, mutator, replacement)) continue;
+
         yield {
           replacement,
           mutatorName: mutator.name,
@@ -171,5 +181,12 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
         return undefined;
       }
     }
+  }
+
+  function mutantCreatesCompileError(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
+    if (isBlockStatementAndChangesMethodOrFunctionDeclaration(node, mutator, replacement)) return true;
+    if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
+
+    return false;
   }
 };
