@@ -79,6 +79,7 @@ export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(
 
   // This type discriminator does not work as expected, the type becomes a never type
   if (!node.parent.typeAnnotation) return false;
+  if (!((node.parent.typeAnnotation as TSTypeAnnotation).typeAnnotation as TSArrayType).elementType) return false;
   // TODO: Add string array type
   if (
     ((node.parent.typeAnnotation as t.TSTypeAnnotation).typeAnnotation as TSArrayType).elementType.type !== 'TSAnyKeyword' &&
