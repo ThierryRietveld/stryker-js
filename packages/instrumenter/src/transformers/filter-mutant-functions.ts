@@ -1,5 +1,5 @@
 import { NodePath, types } from '@babel/core';
-import { ClassProperty, Identifier, Node, TSTypeAnnotation, TSTypeReference, TSArrayType } from '@babel/types';
+import { Identifier, Node, TSTypeAnnotation, TSTypeReference, TSArrayType } from '@babel/types';
 
 import * as t from '@babel/types';
 
