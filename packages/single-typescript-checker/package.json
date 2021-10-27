@@ -6,13 +6,13 @@
   "author": "Danny Berkelaar <Danny.Berkelaar@infosupport.com>",
   "homepage": "https://github.com/ThierryRietveld/stryker-js#readme",
   "dependencies": {
-    "@stryker-mutator/api": "5.4.0",
-    "@stryker-mutator/util": "5.4.0",
-    "@stryker-mutator/typescript-checker": "5.4.0",
+    "@stryker-mutator/api": "5.4.1",
+    "@stryker-mutator/util": "5.4.1",
+    "@stryker-mutator/typescript-checker": "5.4.1",
     "semver": "~7.3.2"
   },
   "devDependencies": {
-    "@stryker-mutator/test-helpers": "5.4.0",
+    "@stryker-mutator/test-helpers": "5.4.1",
     "@types/semver": "~7.3.3",
     "ts-morph": "^12.0.0"
   },
