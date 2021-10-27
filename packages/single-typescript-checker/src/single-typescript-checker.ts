@@ -31,7 +31,6 @@ export class SingleTypescriptChecker implements Checker {
   private readonly compiler: TypescriptCompiler;
   private readonly fs = new MemoryFileSystem();
   private readonly mutantErrors: Record<string, ts.Diagnostic[]> = {};
-  private readonly mutantPromises: Record<string, Task<CheckResult>> = {};
   private readonly exportFinder = new ExportFinder();
   private mutants: Mutant[] = [];
 
@@ -44,34 +43,44 @@ export class SingleTypescriptChecker implements Checker {
   }
 
   public async initMutants(mutants: Mutant[]): Promise<void> {
+    const dryRunErrors = await this.compiler.check();
+    if (dryRunErrors.length > 0) throw new Error(`TypeScript error(s) found in dry run compilation: ${formatErrors(dryRunErrors)}`);
+
     this.mutants = mutants;
     this.logger.info(`Init ${mutants.length} mutants`);
-    const errors = this.allMutantsAtOnce(mutants);
+    const errors = await this.allMutantsAtOnce(mutants);
     this.logger.info('handleErrors');
     this.handleErrors(errors);
 
-    this.clean();
-    this.logger.info('resolve mutants');
-    this.resolveMutants(mutants);
-  }
-
-  private allMutantsAtOnce(mutants: Mutant[]): readonly ts.Diagnostic[] {
-    mutants.forEach((mutant) => {
-      try {
-        this.mutantPromises[mutant.id] = new Task();
-        const originalFile = this.fs.getFile(mutant.fileName);
-        const mutatedFileName = this.getMutantMutatedFileName(mutant);
-        const mutatedFile = this.fs.writeFile(mutatedFileName, originalFile.content);
-        mutatedFile.mutate(mutant);
-      } catch (e) { }
+    this.mutants.forEach((mutant) => {
+      const validErrors = AllAtOnceCheckValid(this.mutantErrors[mutant.id] ?? []);
+      if (validErrors.length) this.mutantErrors[mutant.id] = validErrors;
+      else delete this.mutantErrors[mutant.id];
     });
 
-    const errors = this.compiler.check();
+    this.logger.info(`Found ${Object.keys(this.mutantErrors).length} compile errors`);
+  }
+
+  private async allMutantsAtOnce(mutants: Mutant[]): Promise<readonly ts.Diagnostic[]> {
+    mutants.forEach((mutant) => {
+      try {
+        const originalFile = this.fs.getFile(mutant.fileName);
+        const mutatedFileName = this.getMutantMutatedFileName(mutant);
+        const mutatedFile = this.fs.writeFile(mutatedFileName, originalFile?.content ?? '');
+        mutatedFile.mutate(mutant);
+        console.log(mutant.id);
+      } catch (e) {
+        this.logger.info(`Deleting file ${this.getMutantMutatedFileName(mutant)}`);
+        this.fs.deleteFile(this.getMutantMutatedFileName(mutant));
+      }
+    });
+
+    const errors = await this.compiler.check();
     const allErrors = this.handle2488Errors(errors);
     return allErrors;
   }
 
-  private handle2488Errors(errors: readonly ts.Diagnostic[]): readonly ts.Diagnostic[] {
+  private async handle2488Errors(errors: readonly ts.Diagnostic[]): Promise<readonly ts.Diagnostic[]> {
     let rerun = false;
 
     errors.forEach((e) => {
@@ -86,15 +95,22 @@ export class SingleTypescriptChecker implements Checker {
 
     if (rerun) {
       this.logger.info('Rerunning compiler for 2488 error');
-      const newErrors = this.compiler.check();
-      return [...errors, ...this.handle2488Errors(newErrors)];
+      const newErrors = await this.compiler.check();
+      return [...errors, ...(await this.handle2488Errors(newErrors))];
     } else {
       return errors;
     }
   }
 
   public async check(mutant: Mutant): Promise<CheckResult> {
-    return this.mutantPromises[mutant.id].promise;
+    if (this.mutantErrors[mutant.id]?.length) {
+      return {
+        status: CheckStatus.CompileError,
+        reason: formatErrors(this.mutantErrors[mutant.id]),
+      };
+    }
+
+    return { status: CheckStatus.Passed };
   }
 
   private handleErrors(errors: readonly ts.Diagnostic[]) {
@@ -107,76 +123,60 @@ export class SingleTypescriptChecker implements Checker {
     });
   }
 
-  private resolveMutants(mutants: Mutant[]) {
-    mutants.forEach((m) => {
-      const validErrors = AllAtOnceCheckValid(this.mutantErrors[m.id] ?? []);
-
-      if (validErrors && !validErrors.length) {
-        this.mutantPromises[m.id].resolve({
-          status: CheckStatus.Passed,
-        });
-      } else if (validErrors) {
-        this.mutantPromises[m.id].resolve({
-          status: CheckStatus.CompileError,
-          reason: formatErrors(this.mutantErrors[m.id]),
-        });
-      } else {
-        this.testNaive(m);
-      }
-    });
-  }
-
   private clean() {
     this.mutants.forEach((m) => {
       this.fs.deleteFile(this.getMutantMutatedFileName(m));
     });
   }
 
-  private async testNaive(mutant: Mutant) {
-    this.logger.info(`Testing ${mutant.id} naive`);
-    const file = this.fs.getFile(mutant.fileName);
-    const original = file.content;
-    file.mutate(mutant);
+  // private async testNaive(mutant: Mutant) {
+  //   this.logger.info(`Testing ${mutant.id} naive`);
+  //   const file = this.fs.getFile(mutant.fileName);
+  //   const original = file?.content;
+  //   file?.mutate(mutant);
 
-    const errors = this.compiler.check();
+  //   const errors = await this.compiler.check();
 
-    if (errors.length) {
-      this.mutantPromises[mutant.id].resolve({
-        status: CheckStatus.CompileError,
-        reason: formatErrors(errors),
-      });
-    } else {
-      this.mutantPromises[mutant.id].resolve({
-        status: CheckStatus.Passed,
-      });
-    }
+  //   if (errors.length) {
+  //     this.mutantPromises[mutant.id].resolve({
+  //       status: CheckStatus.CompileError,
+  //       reason: formatErrors(errors),
+  //     });
+  //   } else {
+  //     this.mutantPromises[mutant.id].resolve({
+  //       status: CheckStatus.Passed,
+  //     });
+  //   }
 
-    file.write(original);
-  }
+  //   file?.write(original ?? '');
+  // }
 
-  private testSeparate(mutant: Mutant) {
-    this.logger.info(`Test separate ${mutant.id}`);
+  // private testSeparate(mutant: Mutant) {
+  //   this.logger.info(`Test separate ${mutant.id}`);
 
-    const file = this.fs.getFile(mutant.fileName);
-    const original = file.content;
-    file.mutate(mutant);
-    const errors = this.compiler.check();
-    file.write(original);
-    return errors;
-    // this.handleErrors(errors);
-  }
+  //   const file = this.fs.getFile(mutant.fileName);
+  //   const original = file?.content;
+  //   file?.mutate(mutant);
+  //   const errors = this.compiler.check();
+  //   file?.write(original ?? '');
+  //   return errors;
+  //   // this.handleErrors(errors);
+  // }
 
-  private getDifferentExport(allMutants: Mutant[]): Mutant[] {
-    this.logger.info('Searching different exports');
+  // private getDifferentExport(allMutants: Mutant[]): Mutant[] {
+  //   this.logger.info('Searching different exports');
 
-    const exportDifferences = allMutants.filter((mutant) => {
-      if (this.mutantHasError(mutant)) return false;
-      return !this.exportFinder.same(this.fs.getFile(mutant.fileName).content, this.fs.getFile(this.getMutantMutatedFileName(mutant)).content);
-    });
+  //   const exportDifferences = allMutants.filter((mutant) => {
+  //     if (this.mutantHasError(mutant)) return false;
+  //     return !this.exportFinder.same(
+  //       this.fs.getFile(mutant.fileName)?.content ?? '',
+  //       this.fs.getFile(this.getMutantMutatedFileName(mutant))?.content ?? ''
+  //     );
+  //   });
 
-    this.logger.info(`Found ${exportDifferences.length} from ${allMutants.length} mutants with export differences`);
-    return exportDifferences;
-  }
+  //   this.logger.info(`Found ${exportDifferences.length} from ${allMutants.length} mutants with export differences`);
+  //   return exportDifferences;
+  // }
 
   private mutantHasError(mutant: Mutant): boolean {
     return !!this.mutantErrors[mutant.id];
@@ -186,18 +186,18 @@ export class SingleTypescriptChecker implements Checker {
     return mutant.fileName.replace('.ts', `-mutated(${mutant.id}).ts`);
   }
 
-  private findMutantFromFile(sourceFile: ts.SourceFile | undefined): Mutant | null {
-    if (!sourceFile) return null;
+  // private findMutantFromFile(sourceFile: ts.SourceFile | undefined): Mutant | null {
+  //   if (!sourceFile) return null;
 
-    const file = this.fs.getFile(sourceFile.fileName);
-    return file.mutant ?? null;
-  }
+  //   const file = this.fs.getFile(sourceFile.fileName);
+  //   return file.mutant ?? null;
+  // }
 
   private getMutantFromMutatedFileName(fileName: string): Mutant | null {
     const myRegexp = new RegExp(/-mutated\((\d*)\)\.ts/, 'g');
     const match = myRegexp.exec(fileName);
 
-    console.log(match);
+    console.log(fileName, match);
     if (match) {
       return this.mutants[+match[1]];
     }

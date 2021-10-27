@@ -14,6 +14,7 @@ export class TypescriptCompiler {
   private readonly allTSConfigFiles: Set<string>;
   private readonly tsconfigFile: string;
   private readonly host: ts.SolutionBuilderHost<ts.EmitAndSemanticDiagnosticsBuilderProgram>;
+  private readonly compiler: ts.SolutionBuilder<ts.EmitAndSemanticDiagnosticsBuilderProgram>;
 
   constructor(private readonly fs: MemoryFileSystem, private readonly options: StrykerOptions) {
     this.tsconfigFile = toPosixFileName(this.options.tsconfigFile);
@@ -33,11 +34,12 @@ export class TypescriptCompiler {
       },
       readDirectory: this.fs.readDirectory.bind(this.fs),
     });
+
+    this.compiler = ts.createSolutionBuilder(this.host, [this.tsconfigFile], {});
   }
 
   public check(): readonly ts.Diagnostic[] {
-    const compiler = ts.createSolutionBuilder(this.host, [this.tsconfigFile], {});
-    const a = compiler.getNextInvalidatedProject();
+    const a = this.compiler.getNextInvalidatedProject();
     if (a?.kind === ts.InvalidatedProjectKind.Build) {
       return a.getSemanticDiagnostics();
     }

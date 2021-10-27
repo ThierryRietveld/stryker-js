@@ -62,7 +62,7 @@ export class MutantInstrumenterExecutor {
 
     // @ts-expect-error
     await Promise.all([checkerPool.initMutants(instrumentResult.mutants), sandbox.init()]);
-    console.log('done');
+    console.log('done checking en creating sandbox');
     return dryRunProvider;
   }
 

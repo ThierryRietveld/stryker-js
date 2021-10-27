@@ -6,7 +6,7 @@ import { toPosixFileName } from './tsconfig-helpers';
 export class MemoryFileSystem {
   public files: Record<string, File> = {};
 
-  public getFile(fileName: string): File {
+  public getFile(fileName: string): File | null {
     if (this.files[toPosixFileName(fileName)]) {
       return this.files[toPosixFileName(fileName)];
     }
@@ -14,8 +14,10 @@ export class MemoryFileSystem {
     return this.getNewFile(toPosixFileName(fileName));
   }
 
-  private getNewFile(fileName: string): File {
+  private getNewFile(fileName: string): File | null {
     const content = ts.sys.readFile(fileName);
+    if (!content) return null;
+
     const file = new File(fileName, content ?? '');
     this.files[fileName] = file;
     return file;
