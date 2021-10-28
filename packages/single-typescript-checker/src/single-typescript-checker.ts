@@ -4,9 +4,10 @@ import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 import { tokens, commonTokens, PluginContext, Injector, Scope } from '@stryker-mutator/api/plugin';
 import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
 import { Mutant, StrykerOptions } from '@stryker-mutator/api/core';
-import { Task } from '@stryker-mutator/util';
 
 import ts from 'typescript';
+
+import { File } from './fs/memory-file';
 
 import { TypescriptCompiler } from './typescript-compiler';
 import { MemoryFileSystem } from './fs/memory-filesystem';
@@ -59,6 +60,7 @@ export class SingleTypescriptChecker implements Checker {
     });
 
     this.logger.info(`Found ${Object.keys(this.mutantErrors).length} compile errors`);
+    this.clean();
   }
 
   private async allMutantsAtOnce(mutants: Mutant[]): Promise<readonly ts.Diagnostic[]> {
@@ -108,6 +110,24 @@ export class SingleTypescriptChecker implements Checker {
         status: CheckStatus.CompileError,
         reason: formatErrors(this.mutantErrors[mutant.id]),
       };
+    }
+
+    const file = this.fs.getFile(mutant.fileName);
+    const content = ts.sys.readFile(mutant.fileName) ?? '';
+    const mutatedFile = new File('mutated' + mutant.fileName, content);
+    mutatedFile.mutate(mutant);
+
+    // export difference have to check separate
+    if (!this.exportFinder.same(file?.content ?? '', mutatedFile.content)) {
+      file?.write(mutatedFile.content);
+      const errors = await this.compiler.check();
+      if (errors.length) {
+        this.logger.info('Have found import differences');
+        return {
+          status: CheckStatus.CompileError,
+          reason: formatErrors(errors),
+        };
+      }
     }
 
     return { status: CheckStatus.Passed };
