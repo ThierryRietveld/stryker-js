@@ -16,7 +16,7 @@ export class ScriptFile {
   public watcher: ts.FileWatcherCallback | undefined;
 
   public mutate(mutant: Pick<Mutant, 'location' | 'replacement'>): void {
-    this.guardMutationIsWatched();
+    // this.guardMutationIsWatched();
 
     const start = this.getOffset(mutant.location.start);
     const end = this.getOffset(mutant.location.end);
@@ -32,7 +32,7 @@ export class ScriptFile {
   }
 
   public resetMutant(): void {
-    this.guardMutationIsWatched();
+    // this.guardMutationIsWatched();
     this.content = this.originalContent;
     this.touch();
   }
