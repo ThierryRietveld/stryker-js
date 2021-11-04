@@ -98,7 +98,7 @@ export class TypescriptChecker implements Checker {
             // this is used to see if new files are added to a directory. Can safely be ignored for mutation testing.
             return {
               // eslint-disable-next-line @typescript-eslint/no-empty-function
-              close() {},
+              close() { },
             };
           },
         },
@@ -139,6 +139,13 @@ export class TypescriptChecker implements Checker {
     if (this.fs.existsInMemory(mutant.fileName)) {
       this.clearCheckState();
       this.fs.mutate(mutant);
+      await this.currentTask.promise;
+
+      const index = this.currentErrors.findIndex((e) => e.file?.fileName && toPosixFileName(e.file?.fileName) !== toPosixFileName(mutant.fileName));
+      if (index > -1) {
+        this.logger.info(`Mutant error not in mutant file ${this.currentErrors[index].file?.fileName} ${mutant.fileName}`);
+      }
+
       return this.currentTask.promise;
     } else {
       // We allow people to mutate files that are not included in this ts project
