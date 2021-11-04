@@ -60,7 +60,10 @@ export class TypescriptChecker implements Checker {
         return content;
       },
       writeFile: (filePath, data) => {
-        // this.fs.writeFile(filePath, data);
+        this.fs.writeFile(filePath, data);
+      },
+      getModifiedTime: (fileName) => {
+        return this.fs.getFile(fileName)!.modifiedTime;
       },
     });
   }
