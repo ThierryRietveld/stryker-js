@@ -65,12 +65,6 @@ class CucumberTestRunner implements TestRunner {
     StrykerFormatter.instrumenterContext = this.instrumenterContext;
   }
 
-  static stringToNotBeString() {
-    if (true) {
-      return "";
-    }
-  }
-
   private readonly directoryRequireCache = new DirectoryRequireCache();
 
   public async dryRun(options: DryRunOptions): Promise<DryRunResult> {

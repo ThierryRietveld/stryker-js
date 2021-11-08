@@ -37,7 +37,6 @@ export class TypescriptCompiler {
 
   public async check(): Promise<readonly ts.Diagnostic[]> {
     const errors: ts.Diagnostic[] = [];
-    console.log('tsconfig', this.tsconfigFile);
     const buildModeEnabled = determineBuildModeEnabled(this.tsconfigFile);
     const compiler = ts.createSolutionBuilderWithWatch(
       ts.createSolutionBuilderWithWatchHost(
@@ -51,7 +50,7 @@ export class TypescriptCompiler {
             return content;
           },
           readDirectory: this.fs.readDirectory.bind(this.fs),
-          writeFile: (fileName) => { }
+          writeFile: (fileName) => { },
         },
         undefined,
         (error) => {

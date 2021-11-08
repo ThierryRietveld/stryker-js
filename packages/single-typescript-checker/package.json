@@ -7,12 +7,14 @@
   "homepage": "https://github.com/ThierryRietveld/stryker-js#readme",
   "dependencies": {
     "@stryker-mutator/api": "5.4.0",
-    "@stryker-mutator/util": "5.4.0",
     "@stryker-mutator/typescript-checker": "5.4.0",
-    "semver": "~7.3.2"
+    "@stryker-mutator/util": "5.4.0",
+    "dependency-tree": "^8.1.2",
+    "semver": "~7.3.2",
+    "typed-inject": "^3.0.1"
   },
   "devDependencies": {
-    "@stryker-mutator/test-helpers": "5.4.0",
+    "@stryker-mutator/test-helpers": "5.4.1",
     "@types/semver": "~7.3.3",
     "ts-morph": "^12.0.0"
   },
