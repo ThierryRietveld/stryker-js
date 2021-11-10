@@ -1,5 +1,7 @@
 import { EOL } from 'os';
 
+import { appendFile, writeFile } from 'fs';
+
 import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 import { tokens, commonTokens, PluginContext, Injector, Scope } from '@stryker-mutator/api/plugin';
 import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
@@ -40,22 +42,30 @@ export class SingleTypescriptChecker implements Checker {
   }
 
   public async initMutants(mutants: Mutant[]): Promise<void> {
+    writeFile('errors.txt', '', () => {});
+
+    this.logger.info('Starting initial test run');
     const errors = await this.compiler.check();
+    this.logger.info('Initial test run completed');
     if (errors.length) throw new Error('dry run error');
 
-    // const startFileName = 'src/index.ts';
-    // const builder = new GroupBuilder(mutants, startFileName, this.options.tsconfigFile);
-    // const groups = builder.generateGroups();
+    const startFileName = 'src/index.ts';
+    const builder = new GroupBuilder(mutants, startFileName, this.options.tsconfigFile, this.fs);
+    const groups = builder.getGroups();
 
-    // for (let index = 0; index < groups.length; index++) {
-    //   this.logger.info(`Running group ${index} of ${groups.length}`);
-    //   await this.handleGroup(groups[index]);
-    // }
+    const mutantsCount = groups.reduce((a, b) => a + b.reduce((c, d) => c + 1, 0), 0);
+    this.logger.info(`Testing ${mutantsCount.toString()} mutants in ${groups.length} groups`);
+
+    for (let index = 0; index < groups.length; index++) {
+      this.logger.info(`Running group ${index} with ${groups[index].length} mutants of ${groups.length} groups`);
+      await this.handleGroup(groups[index]);
+    }
   }
 
   private async handleGroup(group: Mutant[]) {
     group.forEach((mutant) => this.fs.getFile(mutant.fileName)?.mutate(mutant));
     const errors = await this.compiler.check();
+    this.logger.info(`Found ${errors.length} errors`);
 
     errors.forEach((error) => {
       const index = group.findIndex((m) => {
@@ -65,6 +75,11 @@ export class SingleTypescriptChecker implements Checker {
 
       if (!mutant) {
         this.logger.info('Can not match error with mutant');
+        const text = `${error.file?.fileName} | ${error.messageText}\n  ${group.map((m) => m.fileName).join('\n  ')}\n\n\n`;
+
+        appendFile('errors.txt', text, () => {
+          this.logger.info('Can not match error with mutant');
+        });
       } else if (this.mutantErrors[mutant.id]) {
         this.mutantErrors[mutant.id].push(error);
       } else {

@@ -10,8 +10,10 @@
     "@stryker-mutator/typescript-checker": "5.4.0",
     "@stryker-mutator/util": "5.4.0",
     "dependency-tree": "^8.1.2",
+    "precinct": "^8.2.0",
     "semver": "~7.3.2",
-    "typed-inject": "^3.0.1"
+    "typed-inject": "^3.0.1",
+    "typescript": "^4.3.2"
   },
   "devDependencies": {
     "@stryker-mutator/test-helpers": "5.4.1",

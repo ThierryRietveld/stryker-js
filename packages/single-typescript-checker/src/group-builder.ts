@@ -1,27 +1,83 @@
 import path from 'path';
 
 import { Mutant } from '@stryker-mutator/api/core';
-import dependencyTree from 'dependency-tree';
+
+// @ts-expect-error
+import precinct from 'precinct';
+
+import { toPosixFileName } from './fs/tsconfig-helpers';
+
+import { MemoryFileSystem } from './fs/memory-filesystem';
 
 export class GroupBuilder {
-  private readonly mutants: Mutant[];
-  private readonly baseDir = process.cwd() + '/src';
-  private readonly tree: Record<string, { dependencies: string[]; mutants: Mutant[] }>;
+  private readonly tree: Record<string, { dependencies: string[]; mutants: Mutant[] }> = {};
+  private readonly filesSeen: string[] = [];
 
-  constructor(mutants: Mutant[], startFileName: string, tsconfigFileName: string) {
-    this.mutants = mutants;
-
-    const tree = dependencyTree({
-      filename: startFileName,
-      tsConfig: tsconfigFileName,
-      directory: this.baseDir,
-    });
-
-    const flattened = this.flatten(tree);
-    this.tree = flattened;
+  constructor(private readonly mutants: Mutant[], startFileName: string, tsconfigFileName: string, private readonly fs: MemoryFileSystem) {
+    this.createTree();
   }
 
-  public generateGroups(): Mutant[][] {
+  private createTree(): typeof this.tree {
+    const tree: typeof this.tree = {};
+
+    this.mutants.forEach((mutant) => {
+      this.getDependenciesRecursive(mutant.fileName);
+      this.tree[mutant.fileName].mutants.push(mutant);
+    });
+
+    return tree;
+  }
+
+  // missing recursive stop && dont double check mutant files
+  private getDependenciesRecursive(fileName: string) {
+    if (!this.tree[fileName]) this.tree[fileName] = { mutants: [], dependencies: [] };
+    if (this.filesSeen.includes(fileName)) return;
+    this.filesSeen.push(fileName);
+
+    try {
+      const dependencies = this.getDependencies(fileName);
+      dependencies.forEach((d) => {
+        this.addDependency(d, fileName);
+        this.getDependenciesRecursive(d);
+      });
+    } catch (e) {
+      console.log(fileName);
+    }
+  }
+
+  // todo fix that every type can be used
+  private getDependencies(fileName: string): string[] {
+    const content = this.fs.getFile(fileName)?.content;
+    if (!content) return [];
+    const dependencies: string[] = precinct(content, { type: 'ts' });
+    return dependencies.filter((dependency: string) => dependency.startsWith('.')).map((d) => path.resolve(path.dirname(fileName), d + '.ts'));
+  }
+
+  private addDependency(dependency: string, dependsOn: string) {
+    if (this.tree[dependency]) {
+      if (this.tree[dependency].dependencies.includes(dependsOn)) return;
+      this.tree[dependency].dependencies.push(dependsOn);
+    } else {
+      this.tree[dependency] = {
+        dependencies: [dependsOn],
+        mutants: [],
+      };
+    }
+  }
+
+  public getGroups(): Mutant[][] {
+    const mutantsNotIncludedInTree: Mutant[][] = [];
+
+    this.mutants.forEach((m) => {
+      const include = Object.keys(this.tree).findIndex((e) => toPosixFileName(e) === toPosixFileName(m.fileName));
+      if (include === -1) mutantsNotIncludedInTree.push([m]);
+    });
+    console.log(`Could not find ${mutantsNotIncludedInTree.length} mutants in tree of ${this.mutants.length} mutants`);
+
+    return [...this.generateGroups(), ...mutantsNotIncludedInTree];
+  }
+
+  private generateGroups(): Mutant[][] {
     const mutantGroups: Mutant[][] = [];
     const usedNodes: string[] = [];
     for (const activeNode in this.tree) {
@@ -44,7 +100,6 @@ export class GroupBuilder {
         }
       }
 
-      console.log(currentNodeGroup.length);
       mutantGroups.push(currentMutantGroup);
     }
 
@@ -68,60 +123,5 @@ export class GroupBuilder {
     }
 
     return true;
-  }
-
-  private flatten(tree: dependencyTree.Tree): typeof this.tree {
-    const parentNodes = this.getNodeParents(tree, {});
-    const allNodeDependencies = this.getAllNodeDependencies(parentNodes);
-    const newTree: typeof this.tree = {};
-
-    for (const node in allNodeDependencies) {
-      newTree[node] = {
-        dependencies: allNodeDependencies[node],
-        mutants: this.getMutantsFromNode(node),
-      };
-    }
-
-    return newTree;
-  }
-
-  private getMutantsFromNode(node: string): Mutant[] {
-    return this.mutants.filter((mutant) => mutant.fileName === node);
-  }
-
-  private getNodeParents(tree: dependencyTree.Tree, allNodes: Record<string, string[]>, parentNode?: string): Record<string, string[]> {
-    if (typeof tree === 'string') return { [tree]: [] };
-
-    for (const node in tree) {
-      this.getNodeParents(tree[node], allNodes, node);
-
-      if (allNodes[node] && parentNode) {
-        allNodes[node].push(parentNode);
-      } else {
-        allNodes[node] = parentNode ? [parentNode] : [];
-      }
-    }
-
-    return allNodes;
-  }
-
-  private getAllNodeDependencies(parentNodes: Record<string, string[]>): Record<string, string[]> {
-    const allNodeDependencies: Record<string, string[]> = {};
-
-    for (const node in parentNodes) {
-      allNodeDependencies[node] = [...new Set(this.findDependenciesRecursive(parentNodes[node], parentNodes))];
-    }
-
-    return allNodeDependencies;
-  }
-
-  private findDependenciesRecursive(dependencies: string[] = [], parentNodes: Record<string, string[]>): string[] {
-    let allDependencies = [...dependencies];
-
-    for (const dependency of dependencies) {
-      allDependencies = [...allDependencies, ...this.findDependenciesRecursive(parentNodes[dependency], parentNodes)];
-    }
-
-    return allDependencies;
   }
 }
