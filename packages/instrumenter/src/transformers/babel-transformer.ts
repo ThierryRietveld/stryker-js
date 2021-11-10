@@ -15,7 +15,6 @@ import { DirectiveBookkeeper } from './directive-bookkeeper';
 
 import {
   isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString,
-  isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsStringOnVar,
   isBlockStatementAndChangesMethodOrFunctionDeclaration,
 } from './filter-mutant-functions';
 
@@ -187,7 +186,6 @@ export const transformBabel: AstTransformer<ScriptFormat> = (
   function mutantCreatesCompileError(node: NodePath, mutator: NodeMutator, replacement: types.Node): boolean {
     if (isBlockStatementAndChangesMethodOrFunctionDeclaration(node, mutator, replacement)) return true;
     if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(node, mutator, replacement)) return true;
-    if (isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsStringOnVar(node, mutator, replacement)) return true;
 
     return false;
   }

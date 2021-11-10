@@ -47,30 +47,37 @@ export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(
   if (!replacement.elements.length) return false;
   if (replacement.elements[0] === null) return false;
   if (!t.isStringLiteral(replacement.elements[0], {})) return false;
-  if (!t.isClassProperty(node.parent, {})) return false;
-  if (!node.parent.typeAnnotation) return false;
-  if (!t.isTSTypeAnnotation(node.parent.typeAnnotation, {})) return false;
-  if (!t.isTSArrayType(node.parent.typeAnnotation.typeAnnotation, {})) return false;
-  if (['TSAnyKeyword', 'TSUnknownKeyword', 'TSStringKeyword'].includes(node.parent.typeAnnotation.typeAnnotation.elementType.type)) return false;
+
+  if (t.isClassProperty(node.parent, {})) {
+    if (!node.parent.typeAnnotation) return false;
+    if (!t.isTSTypeAnnotation(node.parent.typeAnnotation, {})) return false;
+    if (!t.isTSArrayType(node.parent.typeAnnotation.typeAnnotation, {})) return false;
+    if (['TSAnyKeyword', 'TSUnknownKeyword', 'TSStringKeyword'].includes(node.parent.typeAnnotation.typeAnnotation.elementType.type)) return false;
+  } else if (t.isVariableDeclarator(node.parent, {})) {
+    if (!t.isIdentifier(node.parent.id, {})) return false;
+    if (!t.isTSTypeAnnotation(node.parent.id.typeAnnotation, {})) return false;
+    if (!t.isTSArrayType(node.parent.id.typeAnnotation.typeAnnotation, {})) return false;
+    if (['TSAnyKeyword', 'TSUnknownKeyword', 'TSStringKeyword'].includes(node.parent.id.typeAnnotation.typeAnnotation.elementType.type)) return false;
+  }
 
   return true;
 }
 
-export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsStringOnVar(
-  node: NodePath,
-  mutator: NodeMutator,
-  replacement: types.Node
-): boolean {
-  if (!t.isArrayExpression(node, {})) return false;
-  if (!t.isArrayExpression(replacement, {})) return false;
-  if (!replacement.elements.length) return false;
-  if (replacement.elements[0] === null) return false;
-  if (!t.isStringLiteral(replacement.elements[0], {})) return false;
-  if (!t.isVariableDeclarator(node.parent, {})) return false;
-  if (!t.isIdentifier(node.parent.id, {})) return false;
-  if (!t.isTSTypeAnnotation(node.parent.id.typeAnnotation, {})) return false;
-  if (!t.isTSArrayType(node.parent.id.typeAnnotation.typeAnnotation, {})) return false;
-  if (['TSAnyKeyword', 'TSUnknownKeyword', 'TSStringKeyword'].includes(node.parent.id.typeAnnotation.typeAnnotation.elementType.type)) return false;
+// export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsStringOnVar(
+//   node: NodePath,
+//   mutator: NodeMutator,
+//   replacement: types.Node
+// ): boolean {
+//   if (!t.isArrayExpression(node, {})) return false;
+//   if (!t.isArrayExpression(replacement, {})) return false;
+//   if (!replacement.elements.length) return false;
+//   if (replacement.elements[0] === null) return false;
+//   if (!t.isStringLiteral(replacement.elements[0], {})) return false;
+//   if (!t.isVariableDeclarator(node.parent, {})) return false;
+//   if (!t.isIdentifier(node.parent.id, {})) return false;
+//   if (!t.isTSTypeAnnotation(node.parent.id.typeAnnotation, {})) return false;
+//   if (!t.isTSArrayType(node.parent.id.typeAnnotation.typeAnnotation, {})) return false;
+//   if (['TSAnyKeyword', 'TSUnknownKeyword', 'TSStringKeyword'].includes(node.parent.id.typeAnnotation.typeAnnotation.elementType.type)) return false;
 
-  return true;
-}
+//   return true;
+// }
