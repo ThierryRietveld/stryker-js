@@ -10,33 +10,44 @@ import { toPosixFileName } from './fs/tsconfig-helpers';
 import { MemoryFileSystem } from './fs/memory-filesystem';
 
 export class GroupBuilder {
-  private readonly tree: Record<string, { dependencies: string[]; mutants: Mutant[] }> = {};
+  private readonly tree: Record<string, { dependencies: string[]; imports: string[]; mutants: Mutant[] }> = {};
   private readonly filesSeen: string[] = [];
 
-  constructor(private readonly mutants: Mutant[], startFileName: string, tsconfigFileName: string, private readonly fs: MemoryFileSystem) {
+  constructor(private readonly mutants: Mutant[], private readonly fs: MemoryFileSystem) {
     this.createTree();
   }
 
-  private createTree(): typeof this.tree {
-    const tree: typeof this.tree = {};
-
+  private createTree() {
     this.mutants.forEach((mutant) => {
       this.getDependenciesRecursive(mutant.fileName);
       this.tree[mutant.fileName].mutants.push(mutant);
     });
-
-    return tree;
   }
 
-  // missing recursive stop && dont double check mutant files
+  public matchErrorWithGroup(errorFileName: string, group: Mutant[], nodeSeen: string[] = []): Mutant[] {
+    this.getDependenciesRecursive(errorFileName);
+    let mutantsHit: Mutant[] = [];
+
+    this.tree[errorFileName].imports.forEach((node) => {
+      if (nodeSeen.includes(node)) return;
+      nodeSeen.push(node);
+      const index = group.findIndex((m) => m.fileName === node);
+      if (index >= 0) mutantsHit.push(group[index]);
+      mutantsHit = [...mutantsHit, ...this.matchErrorWithGroup(node, group, nodeSeen)];
+    });
+
+    return mutantsHit;
+  }
+
   private getDependenciesRecursive(fileName: string) {
-    if (!this.tree[fileName]) this.tree[fileName] = { mutants: [], dependencies: [] };
     if (this.filesSeen.includes(fileName)) return;
+
+    const imports = this.getDependencies(fileName);
+    if (!this.tree[fileName]) this.tree[fileName] = { imports: imports, mutants: [], dependencies: [] };
     this.filesSeen.push(fileName);
 
     try {
-      const dependencies = this.getDependencies(fileName);
-      dependencies.forEach((d) => {
+      imports.forEach((d) => {
         this.addDependency(d, fileName);
         this.getDependenciesRecursive(d);
       });
@@ -58,8 +69,11 @@ export class GroupBuilder {
       if (this.tree[dependency].dependencies.includes(dependsOn)) return;
       this.tree[dependency].dependencies.push(dependsOn);
     } else {
+      const imports = this.getDependencies(dependency);
+
       this.tree[dependency] = {
         dependencies: [dependsOn],
+        imports: imports,
         mutants: [],
       };
     }
@@ -72,7 +86,6 @@ export class GroupBuilder {
       const include = Object.keys(this.tree).findIndex((e) => toPosixFileName(e) === toPosixFileName(m.fileName));
       if (include === -1) mutantsNotIncludedInTree.push([m]);
     });
-    console.log(`Could not find ${mutantsNotIncludedInTree.length} mutants in tree of ${this.mutants.length} mutants`);
 
     return [...this.generateGroups(), ...mutantsNotIncludedInTree];
   }
@@ -86,7 +99,7 @@ export class GroupBuilder {
 
       const currentMutantGroup = this.tree[activeNode].mutants.splice(0, 1);
       const currentNodeGroup = [activeNode];
-      let ignoreNodes = this.tree[activeNode].dependencies;
+      let ignoreNodes = this.getAllDependencies(activeNode);
 
       for (const searchNode in this.tree) {
         if (searchNode === activeNode || !this.shouldUseNode(searchNode, usedNodes)) continue;
@@ -96,7 +109,7 @@ export class GroupBuilder {
           currentMutantGroup.push(this.tree[searchNode].mutants.splice(0, 1)[0]);
           currentNodeGroup.push(searchNode);
 
-          ignoreNodes = [...ignoreNodes, ...this.tree[searchNode].dependencies];
+          ignoreNodes = [...ignoreNodes, ...this.getAllDependencies(searchNode)];
         }
       }
 
@@ -118,10 +131,22 @@ export class GroupBuilder {
   private allowedInGroup(ignoreNodes: string[], currentNodeGroup: string[], searchNode: string): boolean {
     if (ignoreNodes.includes(searchNode)) return false;
 
-    for (const groupNode of this.tree[searchNode].dependencies) {
+    for (const groupNode of this.getAllDependencies(searchNode)) {
       if (currentNodeGroup.includes(groupNode)) return false;
     }
 
     return true;
+  }
+
+  private getAllDependencies(node: string, seenNodes: string[] = []): string[] {
+    let nodes = [...this.tree[node].dependencies];
+
+    this.tree[node].dependencies.forEach((n) => {
+      if (seenNodes.includes(n)) return;
+      seenNodes.push(n);
+      nodes = [...nodes, ...this.getAllDependencies(n, seenNodes)];
+    });
+
+    return nodes;
   }
 }

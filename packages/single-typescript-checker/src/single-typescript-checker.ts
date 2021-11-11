@@ -27,11 +27,19 @@ export function create(injector: Injector<PluginContext>): SingleTypescriptCheck
   return injector.provideFactory(commonTokens.logger, singleTypescriptCheckerLoggerFactory, Scope.Transient).injectClass(SingleTypescriptChecker);
 }
 
+const diagnosticsHost: ts.FormatDiagnosticsHost = {
+  getCanonicalFileName: (fileName) => fileName,
+  getCurrentDirectory: process.cwd,
+  getNewLine: () => EOL,
+};
+
 export class SingleTypescriptChecker implements Checker {
   public static inject = tokens(commonTokens.logger, commonTokens.options);
   private readonly compiler: TypescriptCompiler;
   private readonly fs = new MemoryFileSystem();
   private readonly mutantErrors: Record<string, ts.Diagnostic[]> = {};
+  private groupBuilder: GroupBuilder | undefined;
+  private readonly testNaive = new Set<Mutant>();
 
   constructor(private readonly logger: Logger, private readonly options: StrykerOptions) {
     this.compiler = new TypescriptCompiler(this.fs, options);
@@ -42,16 +50,13 @@ export class SingleTypescriptChecker implements Checker {
   }
 
   public async initMutants(mutants: Mutant[]): Promise<void> {
-    writeFile('errors.txt', '', () => {});
-
     this.logger.info('Starting initial test run');
     const errors = await this.compiler.check();
+    if (errors.length) throw new Error(`Dry run error ${ts.formatDiagnostics(errors, diagnosticsHost)}`);
     this.logger.info('Initial test run completed');
-    if (errors.length) throw new Error('dry run error');
 
-    const startFileName = 'src/index.ts';
-    const builder = new GroupBuilder(mutants, startFileName, this.options.tsconfigFile, this.fs);
-    const groups = builder.getGroups();
+    this.groupBuilder = new GroupBuilder(mutants, this.fs);
+    const groups = this.groupBuilder.getGroups();
 
     const mutantsCount = groups.reduce((a, b) => a + b.reduce((c, d) => c + 1, 0), 0);
     this.logger.info(`Testing ${mutantsCount.toString()} mutants in ${groups.length} groups`);
@@ -59,6 +64,11 @@ export class SingleTypescriptChecker implements Checker {
     for (let index = 0; index < groups.length; index++) {
       this.logger.info(`Running group ${index} with ${groups[index].length} mutants of ${groups.length} groups`);
       await this.handleGroup(groups[index]);
+    }
+
+    this.logger.info(`Testing ${this.testNaive.size} naive`);
+    for (const mutant of this.testNaive) {
+      await this.handleGroup([mutant]);
     }
   }
 
@@ -71,16 +81,24 @@ export class SingleTypescriptChecker implements Checker {
       const index = group.findIndex((m) => {
         return toPosixFileName(m.fileName) === toPosixFileName(error.file?.fileName ?? '');
       });
-      const mutant = group[index];
+      let mutant = group[index];
 
       if (!mutant) {
-        this.logger.info('Can not match error with mutant');
-        const text = `${error.file?.fileName} | ${error.messageText}\n  ${group.map((m) => m.fileName).join('\n  ')}\n\n\n`;
+        const possibleMutants = this.groupBuilder!.matchErrorWithGroup(error.file?.fileName ?? '', group);
+        if (possibleMutants.length === 0) {
+          this.logger.info(`Could not match error with mutant ${error.file?.fileName} | ${JSON.stringify(error.messageText)}`);
+          return;
+          // throw new Error('Could not match error with mutant');
+        }
+        if (possibleMutants.length > 1) {
+          possibleMutants.forEach((m) => this.testNaive.add(m));
+          return;
+        }
 
-        appendFile('errors.txt', text, () => {
-          this.logger.info('Can not match error with mutant');
-        });
-      } else if (this.mutantErrors[mutant.id]) {
+        mutant = possibleMutants[0];
+      }
+
+      if (this.mutantErrors[mutant.id]) {
         this.mutantErrors[mutant.id].push(error);
       } else {
         this.mutantErrors[mutant.id] = [error];
