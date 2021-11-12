@@ -26,6 +26,8 @@ export function isBlockStatementAndChangesMethodOrFunctionDeclaration(node: Node
       const identifier = ((returnTypeNode as TSTypeAnnotation).typeAnnotation as TSTypeReference).typeName as Identifier;
       if (identifier.name === 'Promise' && (parent as t.FunctionDeclaration).async) return true;
       if (identifier.name === 'Iterable') return true;
+      if (identifier.name === 'AsyncGenerator') return true;
+      if (identifier.name === 'Generator') return true;
     } else {
       // non generic
       const type = (returnTypeNode as TSTypeAnnotation).typeAnnotation.type;
@@ -62,22 +64,3 @@ export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsString(
 
   return true;
 }
-
-// export function isArrayExpressionAndHasCustomReturnTypeAndReplacesmentIsStringOnVar(
-//   node: NodePath,
-//   mutator: NodeMutator,
-//   replacement: types.Node
-// ): boolean {
-//   if (!t.isArrayExpression(node, {})) return false;
-//   if (!t.isArrayExpression(replacement, {})) return false;
-//   if (!replacement.elements.length) return false;
-//   if (replacement.elements[0] === null) return false;
-//   if (!t.isStringLiteral(replacement.elements[0], {})) return false;
-//   if (!t.isVariableDeclarator(node.parent, {})) return false;
-//   if (!t.isIdentifier(node.parent.id, {})) return false;
-//   if (!t.isTSTypeAnnotation(node.parent.id.typeAnnotation, {})) return false;
-//   if (!t.isTSArrayType(node.parent.id.typeAnnotation.typeAnnotation, {})) return false;
-//   if (['TSAnyKeyword', 'TSUnknownKeyword', 'TSStringKeyword'].includes(node.parent.id.typeAnnotation.typeAnnotation.elementType.type)) return false;
-
-//   return true;
-// }
