@@ -1,9 +1,17 @@
 import path from 'path';
 
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
+
+import { EOL } from 'os';
+
 import { Mutant } from '@stryker-mutator/api/core';
 
 // @ts-expect-error
 import precinct from 'precinct';
+
+import graphviz from 'graphviz';
+
+import { ts } from '@ts-morph/common';
 
 import { toPosixFileName } from './fs/tsconfig-helpers';
 
@@ -15,6 +23,7 @@ export class GroupBuilder {
 
   constructor(private readonly mutants: Mutant[], private readonly fs: MemoryFileSystem) {
     this.createTree();
+    this.generateImage('base');
   }
 
   private createTree() {
@@ -149,4 +158,69 @@ export class GroupBuilder {
 
     return nodes;
   }
+
+  public generateImage(
+    imageName: string,
+    mutatedNode: Mutant[] = [],
+    errorNodes: readonly ts.Diagnostic[] = [],
+    unMatchedErrors: readonly ts.Diagnostic[] = []
+  ): void {
+    const treeGraphviz = graphviz.digraph('G');
+
+    const getName = (filename: string) => {
+      return toPosixFileName(filename).split(toPosixFileName(process.cwd())).pop() ?? '';
+    };
+
+    for (const node in this.tree) {
+      const n = treeGraphviz.addNode(getName(node), {
+        color: 'whitesmoke',
+        style: 'filled,bold',
+        shape: 'rect',
+        fontname: 'Arial',
+        nodesep: '5',
+        fillcolor: 'whitesmoke',
+      });
+
+      const errors = errorNodes.filter((e) => getName(node) === getName(e.file?.fileName ?? ''));
+      if (errors.length) {
+        n.set('color', 'orange');
+        n.set('fillcolor', 'orange');
+        n.set('tooltip', ts.formatDiagnostics(errors, diagnosticsHost));
+      }
+
+      const mutant = mutatedNode.find((m) => getName(m.fileName) === getName(node));
+      if (mutant) {
+        n.set('fillcolor', 'cyan');
+        n.set('label', `${getName(mutant.fileName)} (${mutant.id})`);
+      }
+
+      const unmatchedErrors = unMatchedErrors.filter((e) => getName(node) === getName(e.file?.fileName ?? ''));
+      if (unmatchedErrors.length) {
+        n.set('fillcolor', 'red');
+        n.set('tooltip', ts.formatDiagnostics(errors, diagnosticsHost));
+      }
+    }
+
+    for (const node in this.tree) {
+      this.tree[node].dependencies.forEach((n) => {
+        treeGraphviz.addEdge(getName(n), getName(node), { color: 'black' });
+      });
+    }
+
+    if (!existsSync(`${process.cwd()}/graphs/`)) mkdirSync(`${process.cwd()}/graphs/`);
+    const imagePath = `${process.cwd()}/graphs/${imageName}.svg`;
+
+    try {
+      if (existsSync(imagePath)) unlinkSync(imagePath);
+      treeGraphviz.output('svg', imagePath);
+    } catch (e) {
+      console.log(e);
+    }
+  }
 }
+
+const diagnosticsHost: ts.FormatDiagnosticsHost = {
+  getCanonicalFileName: (fileName) => fileName,
+  getCurrentDirectory: process.cwd,
+  getNewLine: () => EOL,
+};

@@ -63,19 +63,20 @@ export class SingleTypescriptChecker implements Checker {
 
     for (let index = 0; index < groups.length; index++) {
       this.logger.info(`Running group ${index} with ${groups[index].length} mutants of ${groups.length} groups`);
-      await this.handleGroup(groups[index]);
+      await this.handleGroup(groups[index], index.toString());
     }
 
     this.logger.info(`Testing ${this.testNaive.size} naive`);
     for (const mutant of this.testNaive) {
-      await this.handleGroup([mutant]);
+      await this.handleGroup([mutant], `individual-${mutant.id}`);
     }
   }
 
-  private async handleGroup(group: Mutant[]) {
+  private async handleGroup(group: Mutant[], groupName: string) {
     group.forEach((mutant) => this.fs.getFile(mutant.fileName)?.mutate(mutant));
     const errors = await this.compiler.check();
     this.logger.info(`Found ${errors.length} errors`);
+    const unMatchedErrors: ts.Diagnostic[] = [];
 
     errors.forEach((error) => {
       const index = group.findIndex((m) => {
@@ -86,6 +87,7 @@ export class SingleTypescriptChecker implements Checker {
       if (!mutant) {
         const possibleMutants = this.groupBuilder!.matchErrorWithGroup(error.file?.fileName ?? '', group);
         if (possibleMutants.length === 0) {
+          unMatchedErrors.push(error);
           this.logger.info(`Could not match error with mutant ${error.file?.fileName} | ${JSON.stringify(error.messageText)}`);
           return;
           // throw new Error('Could not match error with mutant');
@@ -104,6 +106,8 @@ export class SingleTypescriptChecker implements Checker {
         this.mutantErrors[mutant.id] = [error];
       }
     });
+
+    this.groupBuilder?.generateImage(`group-${groupName}-mutants-${group.map((m) => m.id).join(',')}`, group, errors, unMatchedErrors);
 
     group.forEach((mutant) => this.fs.getFile(mutant.fileName)?.reset());
   }

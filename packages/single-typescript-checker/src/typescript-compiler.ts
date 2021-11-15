@@ -16,6 +16,8 @@ export class TypescriptCompiler {
   private readonly tsconfigFile: string;
   private currentTask = new Task();
   private currentErrors: ts.Diagnostic[] = [];
+  // private readonly host: ts.SolutionBuilderHost<ts.EmitAndSemanticDiagnosticsBuilderProgram>;
+  // private readonly compiler: ts.SolutionBuilder<ts.EmitAndSemanticDiagnosticsBuilderProgram>;
 
   constructor(private readonly fs: MemoryFileSystem, private readonly options: StrykerOptions) {
     this.tsconfigFile = toPosixFileName(this.options.tsconfigFile);
@@ -92,6 +94,9 @@ export class TypescriptCompiler {
   //       return content;
   //     },
   //     readDirectory: this.fs.readDirectory.bind(this.fs),
+  //     getModifiedTime: (pathName: string) => {
+  //       return this.fs.getFile(pathName)?.modifiedTime;
+  //     },
   //   });
 
   //   console.log(this.tsconfigFile);
