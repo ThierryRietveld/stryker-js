@@ -16,7 +16,7 @@ export class ScriptFile {
   public watcher: ts.FileWatcherCallback | undefined;
 
   public mutate(mutant: Pick<Mutant, 'location' | 'replacement'>): void {
-    this.guardMutationIsWatched();
+    // this.guardMutationIsWatched();
 
     const start = this.getOffset(mutant.location.start);
     const end = this.getOffset(mutant.location.end);
@@ -32,18 +32,18 @@ export class ScriptFile {
   }
 
   public resetMutant(): void {
-    this.guardMutationIsWatched();
+    // this.guardMutationIsWatched();
     this.content = this.originalContent;
     this.touch();
   }
 
-  private guardMutationIsWatched() {
-    if (!this.watcher) {
-      throw new Error(
-        `Tried to check file "${this.fileName}" (which is part of your typescript project), but no watcher is registered for it. Changes would go unnoticed. This probably means that you need to expand the files that are included in your project.`
-      );
-    }
-  }
+  // private guardMutationIsWatched() {
+  //   if (!this.watcher) {
+  //     throw new Error(
+  //       `Tried to check file "${this.fileName}" (which is part of your typescript project), but no watcher is registered for it. Changes would go unnoticed. This probably means that you need to expand the files that are included in your project.`
+  //     );
+  //   }
+  // }
 
   private touch() {
     this.modifiedTime = new Date();
