@@ -100,7 +100,7 @@ export class TypescriptChecker implements Checker {
       mutantResult.errors = mutantErrors;
     }
 
-    this.logger.info(`Checking ${mutants.length} mutations: found ${errors.length} errors`);
+    // this.logger.info(`Checking ${mutants.length} mutations: found ${errors.length} errors`);
 
     return mutantResults.map((mutantResult) => {
       if (mutantResult.errors.length) {
@@ -148,6 +148,6 @@ export class TypescriptChecker implements Checker {
 
   public async createGroups(mutants: Mutant[]): Promise<Mutant[][] | undefined> {
     this.logger.info('Creating groups!');
-    return createGroups(this.graph, mutants).sort((a, b) => b.length - a.length);
+    return createGroups(this.graph, mutants);
   }
 }

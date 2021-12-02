@@ -9,9 +9,10 @@
   ],  
   "plugins": [
     "../mocha-runner",
-    "../typescript-group-checker"
+    "../typescript-group-checker",
+    "../odd-checker"
   ],
-  "checkers": ["typescript-group"],
+  "checkers": ["odd-checker", "typescript-group"],
   "dashboard": {},
   "buildCommand": "tsc -b",
   "mochaOptions": {
