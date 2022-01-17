@@ -3,17 +3,19 @@
   "coverageAnalysis": "perTest",
   "testRunner": "mocha",
   "reporters": [
+    "json",
     "progress",
     "html",
     "dashboard"
   ],  
   "plugins": [
     "../mocha-runner",
-    "../typescript-group-checker",
+    "../typescript-checker",
     "../odd-checker"
   ],
-  "checkers": ["odd-checker", "typescript-group"],
+  "checkers": ["odd-checker", "typescript"],
   "dashboard": {},
+  "timeoutMS": 10000,
   "buildCommand": "tsc -b",
   "mochaOptions": {
     "spec": ["dist/test/unit/**/*.js"]

@@ -59,7 +59,7 @@ export class MutationTestExecutor {
     private readonly log: Logger,
     private readonly timer: I<Timer>,
     private readonly concurrencyTokenProvider: I<ConcurrencyTokenProvider>
-  ) { }
+  ) {}
 
   public async execute(): Promise<MutantResult[]> {
     const { ignoredResult$, notIgnoredMutant$ } = this.executeIgnore(from(this.matchedMutants));
@@ -90,27 +90,39 @@ export class MutationTestExecutor {
     return { noCoverageResult$, coveredMutant$ };
   }
 
-  private executeCheck(mutants: Observable<MutantTestCoverage>) {
-    const failedMutant$ = new Subject<MutantResult>();
-    let passedMutant$ = new Subject<MutantTestCoverage>();
-    let tempPassedMutant$ = mutants;
-
-    for (const checkerType of this.options.checkers) {
-      this.executeChecker(checkerType, tempPassedMutant$, failedMutant$, passedMutant$);
-      tempPassedMutant$ = passedMutant$;
-      passedMutant$ = new Subject<MutantTestCoverage>();
+  private executeCheck(input$: Observable<MutantTestCoverage>) {
+    if (!this.options.checkers.length) {
+      const checkResult$ = new Subject<MutantResult>();
+      checkResult$.complete();
+      return {
+        checkResult$: checkResult$.asObservable(),
+        passedMutant$: input$,
+      };
     }
 
-    lastValueFrom(tempPassedMutant$).then(() => {
-      this.log.info('Free the checkers! 🦅🕊');
-      passedMutant$.complete();
-      this.checkerPool.dispose();
-      this.concurrencyTokenProvider.freeCheckers();
+    const checkResult$ = new Subject<MutantResult>();
+    let previousPassedMutants$ = input$;
+
+    for (const checkerType of this.options.checkers) {
+      const passedMutants$ = new Subject<MutantTestCoverage>();
+      this.executeChecker(checkerType, previousPassedMutants$, checkResult$, passedMutants$);
+      previousPassedMutants$ = passedMutants$;
+    }
+
+    previousPassedMutants$.subscribe({
+      complete: () => {
+        this.log.debug('Checker(s) finished.');
+
+        checkResult$.complete();
+
+        this.checkerPool.dispose();
+        this.concurrencyTokenProvider.freeCheckers();
+      },
     });
 
     return {
-      checkResult$: failedMutant$,
-      passedMutant$: tempPassedMutant$,
+      checkResult$: checkResult$.asObservable(),
+      passedMutant$: previousPassedMutants$,
     };
   }
 
@@ -123,7 +135,7 @@ export class MutationTestExecutor {
     const mutants = await lastValueFrom(merge(previousPassedMutants$).pipe(toArray()));
 
     // Set the active checker on all checkerWorkers
-    await this.checkerPool.runOnAll(async (checkerResource) => {
+    await this.checkerPool.runOnAllResources(async (checkerResource) => {
       await checkerResource.setActiveChecker(checkerType);
     });
 
@@ -134,23 +146,21 @@ export class MutationTestExecutor {
       })
     );
 
-    this.log.info(`${checkerType} created ${groups.length} groups`);
+    this.log.debug(`${checkerType} created ${groups.length} groups.`);
 
-    await lastValueFrom(
-      this.checkerPool.schedule(from(groups), async (checker, mutantGroup) => {
-        const results = await checker.check(mutantGroup);
-        results.forEach((result) => {
-          if (result.checkResult.status === CheckStatus.Passed) {
-            // todo: check types
-            passedMutant$.next(result.mutant as MutantTestCoverage);
-          } else {
-            checkResult$.next(this.mutationTestReportHelper.reportCheckFailed(result.mutant, result.checkResult));
-          }
-        });
-      })
-    );
+    const run$ = this.checkerPool.schedule(from(groups), async (checker, mutantGroup) => {
+      const results = await checker.check(mutantGroup);
+      results.forEach((result) => {
+        if (result.checkResult.status === CheckStatus.Passed) {
+          passedMutant$.next(result.mutant);
+        } else {
+          checkResult$.next(this.mutationTestReportHelper.reportCheckFailed(result.mutant, result.checkResult));
+        }
+      });
+    });
 
-    checkResult$.complete();
+    await lastValueFrom(run$);
+    passedMutant$.complete();
   }
 
   private executeRunInTestRunner(input$: Observable<MutantTestCoverage>): Observable<MutantResult> {

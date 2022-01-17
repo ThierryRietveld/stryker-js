@@ -1,5 +1,5 @@
 import { CheckResult } from '@stryker-mutator/api/check';
-import { Mutant } from '@stryker-mutator/api/core';
+import { MutantTestCoverage } from '@stryker-mutator/api/core';
 import { Logger } from '@stryker-mutator/api/logging';
 
 import { ChildProcessCrashedError } from '../child-proxy/child-process-crashed-error';
@@ -9,7 +9,7 @@ import { ResourceDecorator } from '../concurrent';
 import { CheckerResource } from './checker-resource';
 
 export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> implements CheckerResource {
-  // Save activeChecker for if a new checker has to spawn
+  // Save the activeChecker in case a new checker has to spawn
   private activeChecker = '';
 
   constructor(producer: () => CheckerResource, private readonly log: Logger) {
@@ -21,7 +21,7 @@ export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> im
     await this.innerResource.setActiveChecker(checker);
   }
 
-  public async check(mutants: Mutant[]): Promise<Array<{ mutant: Mutant; checkResult: CheckResult }>> {
+  public async check(mutants: MutantTestCoverage[]): Promise<Array<{ mutant: MutantTestCoverage; checkResult: CheckResult }>> {
     try {
       return await this.innerResource.check(mutants);
     } catch (error) {
@@ -40,7 +40,7 @@ export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> im
     }
   }
 
-  public async createGroups(mutants: Mutant[]): Promise<Mutant[][] | undefined> {
+  public async createGroups(mutants: MutantTestCoverage[]): Promise<MutantTestCoverage[][] | undefined> {
     return this.innerResource.createGroups?.(mutants);
   }
 }

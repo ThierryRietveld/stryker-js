@@ -38,7 +38,8 @@ import {
   TestStatus,
   TestResult,
 } from '@stryker-mutator/api/test-runner';
-import { Checker, CheckResult, CheckStatus, FailedCheckResult } from '@stryker-mutator/api/check';
+import { CheckResult, CheckStatus, FailedCheckResult } from '@stryker-mutator/api/check';
+import { CheckerResource } from '@stryker-mutator/core/src/checker/checker-resource';
 
 const ajv = new Ajv({ useDefaults: true, strict: false });
 
@@ -70,8 +71,8 @@ export const location = factoryMethod<Location>(() => ({ start: { line: 0, colum
 
 export function pluginResolver(): sinon.SinonStubbedInstance<PluginResolver> {
   return {
-    resolve: sinon.stub(),
-    resolveAll: sinon.stub(),
+    resolve: sinon.stub<any>(),
+    resolveAll: sinon.stub<any>(),
     resolveValidationSchemaContributions: sinon.stub(),
   };
 }
@@ -208,11 +209,12 @@ export function testRunner(): sinon.SinonStubbedInstance<Required<TestRunner>> {
   };
 }
 
-export function checker(): sinon.SinonStubbedInstance<Checker> {
+export function checker(): sinon.SinonStubbedInstance<CheckerResource> {
   return {
     createGroups: sinon.stub(),
     check: sinon.stub(),
     init: sinon.stub(),
+    setActiveChecker: sinon.stub(),
   };
 }
 
@@ -337,7 +339,6 @@ export function reporter(name = 'fooReporter'): sinon.SinonStubbedInstance<Requi
 }
 
 export const mutantTestCoverage = factoryMethod<MutantTestCoverage>(() => ({
-  coveredBy: undefined,
   fileName: '',
   id: '1',
   mutatorName: '',
@@ -350,11 +351,11 @@ export const mutantTestCoverage = factoryMethod<MutantTestCoverage>(() => ({
 export function injector(): sinon.SinonStubbedInstance<Injector> {
   const injectorMock: sinon.SinonStubbedInstance<Injector> = {
     dispose: sinon.stub(),
-    injectClass: sinon.stub(),
-    injectFunction: sinon.stub(),
-    provideClass: sinon.stub(),
-    provideFactory: sinon.stub(),
-    provideValue: sinon.stub(),
+    injectClass: sinon.stub<any>(),
+    injectFunction: sinon.stub<any>(),
+    provideClass: sinon.stub<any>(),
+    provideFactory: sinon.stub<any>(),
+    provideValue: sinon.stub<any>(),
     resolve: sinon.stub(),
   };
   injectorMock.provideClass.returnsThis();

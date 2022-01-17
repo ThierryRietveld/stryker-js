@@ -4,7 +4,6 @@ import { File } from '@stryker-mutator/api/core';
 import { Injector } from 'typed-inject';
 import { factory, testInjector } from '@stryker-mutator/test-helpers';
 import { Instrumenter, InstrumentResult, InstrumenterOptions } from '@stryker-mutator/instrumenter';
-import { Checker } from '@stryker-mutator/api/check';
 
 import { I } from '@stryker-mutator/util';
 
@@ -25,7 +24,7 @@ describe(MutantInstrumenterExecutor.name, () => {
   let sandboxFilePreprocessorMock: sinon.SinonStubbedInstance<FilePreprocessor>;
   let instrumentResult: InstrumentResult;
   let sandboxMock: sinon.SinonStubbedInstance<Sandbox>;
-  let checkerPoolMock: sinon.SinonStubbedInstance<Pool<CheckerResource>>;
+  let checkerPoolMock: sinon.SinonStubbedInstance<I<Pool<CheckerResource>>>;
   let concurrencyTokenProviderMock: ConcurrencyTokenProviderMock;
   let mutatedFile: File;
   let originalFile: File;
@@ -49,7 +48,7 @@ describe(MutantInstrumenterExecutor.name, () => {
     };
     sandboxFilePreprocessorMock.preprocess.resolves([mutatedFile, testFile]);
     inputFiles = new InputFileCollection([originalFile, testFile], [mutatedFile.name], []);
-    injectorMock = factory.injector();
+    injectorMock = factory.injector() as unknown as sinon.SinonStubbedInstance<Injector<DryRunContext>>;
     sut = new MutantInstrumenterExecutor(injectorMock as Injector<MutantInstrumenterContext>, inputFiles, testInjector.options);
     injectorMock.injectClass.withArgs(Instrumenter).returns(instrumenterMock);
     injectorMock.injectFunction.withArgs(createPreprocessor).returns(sandboxFilePreprocessorMock);
