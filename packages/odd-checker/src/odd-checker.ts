@@ -2,7 +2,7 @@ import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 import { tokens, commonTokens, PluginContext, Injector, Scope } from '@stryker-mutator/api/plugin';
 
 import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
-import { Mutant } from '@stryker-mutator/api/src/core';
+import { MutantTestCoverage } from '@stryker-mutator/api/src/core';
 
 oddCheckerLoggerFactory.inject = tokens(commonTokens.getLogger, commonTokens.target);
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -20,15 +20,13 @@ export function create(injector: Injector<PluginContext>): OddChecker {
 class OddChecker implements Checker {
   public static inject = tokens(commonTokens.logger);
 
-  constructor(private readonly logger: Logger) {
-    this.logger.info('Odd checker');
-  }
+  constructor(private readonly logger: Logger) {}
 
   public async init(): Promise<void> {
     return;
   }
 
-  public async check(mutants: Mutant[]): Promise<Array<{ mutant: Mutant; checkResult: CheckResult }>> {
+  public async check(mutants: MutantTestCoverage[]): Promise<Array<{ mutant: MutantTestCoverage; checkResult: CheckResult }>> {
     await new Promise((res) => setTimeout(res, 20));
     return mutants.map((mutant) => {
       // this.logger.info(`Checking mutant ${mutant.id}`);
