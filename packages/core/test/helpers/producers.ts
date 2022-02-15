@@ -1,6 +1,6 @@
 import { CpuInfo } from 'os';
 
-import { ClearTextReporterOptions } from '@stryker-mutator/api/core';
+import { ClearTextReporterOptions, MutantStatus } from '@stryker-mutator/api/core';
 import { Logger } from 'log4js';
 import sinon from 'sinon';
 import { ReplaySubject } from 'rxjs';
@@ -9,7 +9,10 @@ import { Checker } from '@stryker-mutator/api/check';
 
 import { I } from '@stryker-mutator/util';
 
-import { Pool, ConcurrencyTokenProvider } from '../../src/concurrent';
+import { factory } from '@stryker-mutator/test-helpers';
+
+import { Pool, ConcurrencyTokenProvider } from '../../src/concurrent/index.js';
+import { MutantEarlyResultPlan, MutantRunPlan, PlanKind } from '../../src/mutants/index.js';
 
 export type Mutable<T> = {
   -readonly [K in keyof T]: T[K];
@@ -65,8 +68,26 @@ export function createCheckerPoolMock(): sinon.SinonStubbedInstance<I<Pool<Check
   };
 }
 
+export function createMutantRunPlan(overrides?: Partial<MutantRunPlan>): MutantRunPlan {
+  return {
+    plan: PlanKind.Run,
+    mutant: factory.mutantTestCoverage(),
+    runOptions: factory.mutantRunOptions(),
+    ...overrides,
+  };
+}
+
+export function createMutantEarlyResultPlan(overrides?: Partial<MutantEarlyResultPlan>): MutantEarlyResultPlan {
+  return {
+    plan: PlanKind.EarlyResult,
+    mutant: { ...factory.mutantTestCoverage(), status: MutantStatus.Ignored },
+    ...overrides,
+  };
+}
+
 export const logger = (): Mock<Logger> => {
   return {
+    category: 'foo-category',
     _log: sinon.stub(),
     addContext: sinon.stub(),
     clearContext: sinon.stub(),
