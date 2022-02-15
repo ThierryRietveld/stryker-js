@@ -1,5 +1,5 @@
 import { CheckResult } from '@stryker-mutator/api/check';
-import { Mutant } from '@stryker-mutator/api/core';
+import { MutantRunPlan } from '@stryker-mutator/api/core';
 import { Logger } from '@stryker-mutator/api/logging';
 
 import { ChildProcessCrashedError } from '../child-proxy/child-process-crashed-error.js';
@@ -13,9 +13,9 @@ export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> im
     super(producer);
   }
 
-  public async check(mutant: Mutant): Promise<CheckResult> {
+  public async check(checkerIndex: number, mutants: MutantRunPlan[]): Promise<Record<string, CheckResult>> {
     try {
-      return await this.innerResource.check(mutant);
+      return await this.innerResource.check(checkerIndex, mutants);
     } catch (error) {
       if (error instanceof ChildProcessCrashedError) {
         if (error instanceof OutOfMemoryError) {
@@ -24,10 +24,14 @@ export class CheckerRetryDecorator extends ResourceDecorator<CheckerResource> im
           this.log.warn(`Checker process [${error.pid}] crashed with exit code ${error.exitCode}. Retrying in a new process.`, error);
         }
         await this.recover();
-        return this.innerResource.check(mutant);
+        return this.innerResource.check(checkerIndex, mutants);
       } else {
         throw error; //oops
       }
     }
+  }
+
+  public async createGroups(checkerIndex: number, mutants: MutantRunPlan[]): Promise<MutantRunPlan[][] | undefined> {
+    return this.innerResource.createGroups?.(checkerIndex, mutants);
   }
 }

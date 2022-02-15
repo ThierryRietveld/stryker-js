@@ -6,7 +6,7 @@ import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 import { tokens, commonTokens, PluginContext, Injector, Scope } from '@stryker-mutator/api/plugin';
 import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
 import { Task, propertyPath } from '@stryker-mutator/util';
-import { Mutant, StrykerOptions } from '@stryker-mutator/api/core';
+import { MutantRunPlan, StrykerOptions } from '@stryker-mutator/api/core';
 
 import { HybridFileSystem } from './fs/index.js';
 import { determineBuildModeEnabled, overrideOptions, retrieveReferencedProjects, guardTSVersion, toPosixFileName } from './tsconfig-helpers.js';
@@ -135,15 +135,22 @@ export class TypescriptChecker implements Checker {
    * Will simply pass through if the file mutated isn't part of the typescript project
    * @param mutant The mutant to check
    */
-  public async check(mutant: Mutant): Promise<CheckResult> {
-    if (this.fs.existsInMemory(mutant.fileName)) {
+  public async check(mutants: MutantRunPlan[]): Promise<Record<string, CheckResult>> {
+    const mutantRunPlan = mutants[0];
+
+    if (this.fs.existsInMemory(mutantRunPlan.mutant.fileName)) {
       this.clearCheckState();
-      this.fs.mutate(mutant);
-      return this.currentTask.promise;
+      this.fs.mutate(mutantRunPlan.mutant);
+
+      return {
+        [mutantRunPlan.mutant.id]: await this.currentTask.promise,
+      };
     } else {
       // We allow people to mutate files that are not included in this ts project
       return {
-        status: CheckStatus.Passed,
+        [mutantRunPlan.mutant.id]: {
+          status: CheckStatus.Passed,
+        },
       };
     }
   }

@@ -5,7 +5,7 @@ import sinon from 'sinon';
 import { CheckerRetryDecorator } from '../../../src/checker/checker-retry-decorator.js';
 import { ChildProcessCrashedError } from '../../../src/child-proxy/child-process-crashed-error.js';
 import { OutOfMemoryError } from '../../../src/child-proxy/out-of-memory-error.js';
-import { CheckerResource } from '../../../src/concurrent/index.js';
+import { CheckerResource } from '../../../src/checker/checker-resource.js';
 
 describe(CheckerRetryDecorator.name, () => {
   let innerChecker1: sinon.SinonStubbedInstance<CheckerResource>;

@@ -1,9 +1,11 @@
-import { Mutant } from '../core/index.js';
+import { MutantRunPlan } from '../core/index.js';
 
 import { CheckResult } from './check-result.js';
 
 export interface Checker {
   init(): Promise<void>;
 
-  check(mutant: Mutant): Promise<CheckResult>;
+  check(mutant: MutantRunPlan[]): Promise<Record<string, CheckResult>>;
+
+  createGroups?(mutants: MutantRunPlan[]): Promise<MutantRunPlan[][] | undefined>;
 }

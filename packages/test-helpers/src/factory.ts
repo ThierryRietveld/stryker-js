@@ -12,6 +12,8 @@ import {
   MutantCoverage,
   schema,
   MutantStatus,
+  MutantRunPlan,
+  PlanKind,
 } from '@stryker-mutator/api/core';
 import { Logger } from '@stryker-mutator/api/logging';
 import { Reporter, SourceFile } from '@stryker-mutator/api/report';
@@ -37,7 +39,9 @@ import {
   TestStatus,
   TestResult,
 } from '@stryker-mutator/api/test-runner';
-import { Checker, CheckResult, CheckStatus, FailedCheckResult } from '@stryker-mutator/api/check';
+import { CheckResult, CheckStatus, FailedCheckResult } from '@stryker-mutator/api/check';
+
+import { CheckerResource } from '@stryker-mutator/core/src/checker/checker-resource';
 
 const ajv = new Ajv({ useDefaults: true, strict: false });
 
@@ -200,15 +204,22 @@ export function testRunner(): sinon.SinonStubbedInstance<Required<TestRunner>> {
   };
 }
 
-export function checker(): sinon.SinonStubbedInstance<Checker> {
+export function checker(): sinon.SinonStubbedInstance<CheckerResource> {
   return {
     check: sinon.stub(),
     init: sinon.stub(),
+    createGroups: sinon.stub(),
   };
 }
 
 export const checkResult = factoryMethod<CheckResult>(() => ({
   status: CheckStatus.Passed,
+}));
+
+export const recordCheckResult = factoryMethod<Record<string, CheckResult>>(() => ({
+  '1': {
+    status: CheckStatus.Passed,
+  },
 }));
 
 export const failedCheckResult = factoryMethod<FailedCheckResult>(() => ({
@@ -336,6 +347,12 @@ export const mutantTestCoverage = factoryMethod<MutantTestCoverage>(() => ({
   static: false,
   replacement: '',
   location: location(),
+}));
+
+export const mutantRunPlan = factoryMethod<MutantRunPlan>(() => ({
+  plan: PlanKind.Run,
+  mutant: mutantTestCoverage(),
+  runOptions: mutantRunOptions(),
 }));
 
 export function injector<T = unknown>(): sinon.SinonStubbedInstance<Injector<T>> {

@@ -7,7 +7,7 @@ import { expect } from 'chai';
 import { CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 
 import { createCheckerFactory } from '../../../src/checker/index.js';
-import { CheckerResource } from '../../../src/concurrent/index.js';
+import { CheckerResource } from '../../../src/checker/checker-resource.js';
 import { coreTokens } from '../../../src/di/index.js';
 import { LoggingClientContext } from '../../../src/logging/index.js';
 
@@ -53,7 +53,7 @@ describe(`${createCheckerFactory.name} integration`, () => {
   it('should pass along the check result', async () => {
     await arrangeSut('healthy');
     const expected: CheckResult = { status: CheckStatus.Passed };
-    expect(await sut.check(factory.mutant({ id: '1' }))).deep.eq(expected);
+    expect(await sut.check(0, factory.mutant({ id: '1' }))).deep.eq(expected);
   });
 
   it('should reject when the checker behind rejects', async () => {

@@ -17,6 +17,8 @@ import { Timer } from '../../../src/utils/timer.js';
 import { ConcurrencyTokenProvider, Pool } from '../../../src/concurrent/index.js';
 import { Sandbox } from '../../../src/sandbox/index.js';
 import { MutantEarlyResultPlan, MutantRunPlan, MutantTestPlan, MutantTestPlanner } from '../../../src/mutants/index.js';
+import { CheckerResource } from '../../../src/checker/checker-resource.js';
+import { CheckerFacade } from '../../../src/checker/checker-facade.js';
 
 function ignoredEarlyResultPlan(overrides?: Partial<Mutant>): MutantEarlyResultPlan {
   return createMutantEarlyResultPlan({
@@ -35,11 +37,11 @@ function mutantRunPlan(overrides?: Partial<MutantRunOptions & MutantTestCoverage
 describe(MutationTestExecutor.name, () => {
   let reporterMock: Required<Reporter>;
   let testRunnerPoolMock: sinon.SinonStubbedInstance<I<Pool<TestRunner>>>;
-  let checkerPoolMock: sinon.SinonStubbedInstance<I<Pool<Checker>>>;
+  let checkerPoolMock: sinon.SinonStubbedInstance<I<Pool<CheckerResource>>>;
   let sut: MutationTestExecutor;
   let mutants: MutantTestCoverage[];
   let mutantTestPlans: MutantTestPlan[];
-  let checker: sinon.SinonStubbedInstance<Checker>;
+  let checker: sinon.SinonStubbedInstance<CheckerResource>;
   let mutationTestReportHelperMock: sinon.SinonStubbedInstance<MutationTestReportHelper>;
   let mutantTestPlannerMock: sinon.SinonStubbedInstance<MutantTestPlanner>;
   let timerMock: sinon.SinonStubbedInstance<Timer>;
@@ -60,7 +62,7 @@ describe(MutationTestExecutor.name, () => {
     sandboxMock = sinon.createStubInstance(Sandbox);
     (
       checkerPoolMock.schedule as sinon.SinonStub<
-        [Observable<Mutant>, (testRunner: Checker, arg: Mutant) => Promise<CheckResult>],
+        [Observable<Mutant>, (testRunner: CheckerResource, arg: Mutant) => Promise<CheckResult>],
         Observable<CheckResult>
       >
     ).callsFake((item$, task) => item$.pipe(mergeMap((item) => task(checker, item))));
@@ -76,7 +78,7 @@ describe(MutationTestExecutor.name, () => {
     mutantTestPlannerMock.makePlan.returns(mutantTestPlans);
     sut = testInjector.injector
       .provideValue(coreTokens.reporter, reporterMock)
-      .provideValue(coreTokens.checkerPool, checkerPoolMock as I<Pool<Checker>>)
+      .provideValue(coreTokens.checkerPool, checkerPoolMock as I<Pool<CheckerResource>>)
       .provideValue(coreTokens.testRunnerPool, testRunnerPoolMock)
       .provideValue(coreTokens.timeOverheadMS, 42)
       .provideValue(coreTokens.mutants, mutants)
@@ -86,11 +88,14 @@ describe(MutationTestExecutor.name, () => {
       .provideValue(coreTokens.timer, timerMock)
       .provideValue(coreTokens.testRunnerPool, testRunnerPoolMock as I<Pool<TestRunner>>)
       .provideValue(coreTokens.concurrencyTokenProvider, concurrencyTokenProviderMock)
+      .provideClass(coreTokens.checkerFacade, CheckerFacade)
       .injectClass(MutationTestExecutor);
   });
 
-  function arrangeScenario(overrides?: { checkResult?: CheckResult; mutantRunResult?: MutantRunResult }) {
-    checker.check.resolves(overrides?.checkResult ?? factory.checkResult());
+  function arrangeScenario(overrides?: { mutant?: MutantTestCoverage; checkResult?: CheckResult; mutantRunResult?: MutantRunResult }) {
+    checker.check.resolves({
+      [overrides?.mutant?.id ?? factory.mutantTestCoverage().id]: overrides?.checkResult ?? factory.checkResult(),
+    });
     testRunner.mutantRun.resolves(overrides?.mutantRunResult ?? factory.survivedMutantRunResult());
     mutationTestReportHelperMock.reportMutantStatus.returnsArg(0);
     mutationTestReportHelperMock.reportCheckFailed.returnsArg(0);
@@ -181,30 +186,64 @@ describe(MutationTestExecutor.name, () => {
 
   it('should report non-passed check results as "checkFailed"', async () => {
     // Arrange
+    testInjector.options.checkers = ['test'];
+    sut = testInjector.injector
+      .provideValue(coreTokens.reporter, reporterMock)
+      .provideValue(coreTokens.checkerPool, checkerPoolMock as I<Pool<CheckerResource>>)
+      .provideValue(coreTokens.testRunnerPool, testRunnerPoolMock)
+      .provideValue(coreTokens.timeOverheadMS, 42)
+      .provideValue(coreTokens.mutants, mutants)
+      .provideValue(coreTokens.mutantTestPlanner, mutantTestPlannerMock)
+      .provideValue(coreTokens.mutationTestReportHelper, mutationTestReportHelperMock)
+      .provideValue(coreTokens.sandbox, sandboxMock)
+      .provideValue(coreTokens.timer, timerMock)
+      .provideValue(coreTokens.testRunnerPool, testRunnerPoolMock as I<Pool<TestRunner>>)
+      .provideValue(coreTokens.concurrencyTokenProvider, concurrencyTokenProviderMock)
+      .provideClass(coreTokens.checkerFacade, CheckerFacade)
+      .injectClass(MutationTestExecutor);
+
     const mutant = mutantRunPlan({ id: '1' });
     const failedCheckResult = factory.checkResult({ reason: 'Cannot find foo() of `undefined`', status: CheckStatus.CompileError });
-    checker.check.resolves(failedCheckResult);
-    mutantTestPlans.push(mutant);
+    checker.check.resolves({
+      [mutant.mutant.id]: failedCheckResult,
+    });
+    mutants.push(mutant.mutant);
 
     // Act
     await sut.execute();
 
     // Assert
-    expect(mutationTestReportHelperMock.reportCheckFailed).calledWithExactly(mutantTestPlans[0].mutant, failedCheckResult);
+    expect(mutationTestReportHelperMock.reportCheckFailed).calledWithExactly(mutant, failedCheckResult);
   });
 
   it('should free checker resources after checking stage is complete', async () => {
     // Arrange
-    mutantTestPlans.push(mutantRunPlan({ id: '1' }));
-    const checkTask = new Task<CheckResult>();
+    testInjector.options.checkers = ['test'];
+    sut = testInjector.injector
+      .provideValue(coreTokens.reporter, reporterMock)
+      .provideValue(coreTokens.checkerPool, checkerPoolMock as I<Pool<CheckerResource>>)
+      .provideValue(coreTokens.testRunnerPool, testRunnerPoolMock)
+      .provideValue(coreTokens.timeOverheadMS, 42)
+      .provideValue(coreTokens.mutants, mutants)
+      .provideValue(coreTokens.mutantTestPlanner, mutantTestPlannerMock)
+      .provideValue(coreTokens.mutationTestReportHelper, mutationTestReportHelperMock)
+      .provideValue(coreTokens.sandbox, sandboxMock)
+      .provideValue(coreTokens.timer, timerMock)
+      .provideValue(coreTokens.testRunnerPool, testRunnerPoolMock as I<Pool<TestRunner>>)
+      .provideValue(coreTokens.concurrencyTokenProvider, concurrencyTokenProviderMock)
+      .provideClass(coreTokens.checkerFacade, CheckerFacade)
+      .injectClass(MutationTestExecutor);
+
+    mutants.push(factory.mutantTestCoverage({ id: '1' }));
+    const checkTask = new Task<Record<string, CheckResult>>();
     const testRunnerTask = new Task<MutantRunResult>();
     testRunner.mutantRun.returns(testRunnerTask.promise);
     checker.check.returns(checkTask.promise);
 
     // Act & assert
-    const executePromise = sut.execute();
-    checkTask.resolve(factory.checkResult());
-    await tick(2);
+    checkTask.resolve({ [factory.mutantTestCoverage().id]: factory.checkResult() });
+    const executePromise = await sut.execute();
+    await tick(10);
     expect(checkerPoolMock.dispose).called;
     expect(concurrencyTokenProviderMock.freeCheckers).called;
     testRunnerTask.resolve(factory.killedMutantRunResult());
