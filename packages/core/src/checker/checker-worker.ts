@@ -1,20 +1,23 @@
-import { Checker, CheckResult, CheckStatus } from '@stryker-mutator/api/check';
-import { StrykerOptions, Mutant } from '@stryker-mutator/api/core';
+import { Checker, CheckResult } from '@stryker-mutator/api/check';
+import { StrykerOptions, MutantTestCoverage, Mutant } from '@stryker-mutator/api/core';
 import { PluginKind, tokens, commonTokens, PluginContext, Injector } from '@stryker-mutator/api/plugin';
 import { StrykerError } from '@stryker-mutator/util';
 
 import { PluginCreator } from '../di';
 
-export class CheckerWorker implements Checker {
-  private readonly innerCheckers: Array<{ name: string; checker: Checker }> = [];
+import { CheckerResource } from './checker-resource';
+
+export class CheckerWorker implements CheckerResource {
+  private readonly innerCheckers: Record<string, Checker> = {};
 
   public static inject = tokens(commonTokens.options, commonTokens.injector);
   constructor(options: StrykerOptions, injector: Injector<PluginContext>) {
     const pluginCreator = injector.injectFunction(PluginCreator.createFactory(PluginKind.Checker));
-    this.innerCheckers = options.checkers.map((name) => ({ name, checker: pluginCreator.create(name) }));
+    options.checkers.forEach((name) => (this.innerCheckers[name] = pluginCreator.create(name)));
   }
+
   public async init(): Promise<void> {
-    for await (const { name, checker } of this.innerCheckers) {
+    for await (const [name, checker] of Object.entries(this.innerCheckers)) {
       try {
         await checker.init();
       } catch (error: unknown) {
@@ -22,13 +25,20 @@ export class CheckerWorker implements Checker {
       }
     }
   }
-  public async check(mutant: Mutant): Promise<CheckResult> {
-    for await (const { checker } of this.innerCheckers) {
-      const result = await checker.check(mutant);
-      if (result.status !== CheckStatus.Passed) {
-        return result;
-      }
+
+  public async check(checkerName: string, mutants: Mutant[]): Promise<Record<string, CheckResult>> {
+    if (checkerName === '') {
+      throw new Error('No checker set.');
     }
-    return { status: CheckStatus.Passed };
+
+    return this.innerCheckers[checkerName].check(mutants);
+  }
+
+  public async createGroups(checkerName: string, mutants: MutantTestCoverage[]): Promise<MutantTestCoverage[][] | undefined> {
+    if (checkerName === '') {
+      throw new Error('No checker set.');
+    }
+
+    return this.innerCheckers[checkerName].createGroups?.(mutants);
   }
 }

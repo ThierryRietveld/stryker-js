@@ -2,10 +2,11 @@ import { factory, testInjector } from '@stryker-mutator/test-helpers';
 import { expect } from 'chai';
 import sinon from 'sinon';
 
+import { CheckerResource } from '../../../src/checker/checker-resource';
+
 import { CheckerRetryDecorator } from '../../../src/checker/checker-retry-decorator';
 import { ChildProcessCrashedError } from '../../../src/child-proxy/child-process-crashed-error';
 import { OutOfMemoryError } from '../../../src/child-proxy/out-of-memory-error';
-import { CheckerResource } from '../../../src/concurrent';
 
 describe(CheckerRetryDecorator.name, () => {
   let innerChecker1: sinon.SinonStubbedInstance<CheckerResource>;
@@ -30,16 +31,16 @@ describe(CheckerRetryDecorator.name, () => {
   it('should forward any results', async () => {
     const expectedResult = factory.checkResult();
     const expectedMutant = factory.mutant();
-    innerChecker1.check.resolves(expectedResult);
-    const actual = await sut.check(expectedMutant);
-    expect(actual).eq(expectedResult);
-    expect(innerChecker1.check).calledWith(expectedMutant);
+    innerChecker1.check.resolves({ [expectedMutant.id]: expectedResult });
+    const actual = await sut.check('', [expectedMutant]);
+    expect(actual[expectedMutant.id]).eq(expectedResult);
+    expect(innerChecker1.check).calledWithExactly('', [expectedMutant]);
   });
 
   it('should forward normal rejections', async () => {
     const expectedError = new Error('expected error');
     innerChecker1.check.rejects(expectedError);
-    await expect(sut.check(factory.mutant())).rejectedWith(expectedError);
+    await expect(sut.check('', [factory.mutant()])).rejectedWith(expectedError);
   });
 
   it('should retry when the process crashed', async () => {
@@ -48,24 +49,26 @@ describe(CheckerRetryDecorator.name, () => {
     const expectedMutant = factory.mutant();
     const error = new ChildProcessCrashedError(6, 'A bit flipped!');
     innerChecker1.check.rejects(error);
-    innerChecker2.check.resolves(expectedResult);
+    innerChecker2.check.resolves({ [expectedMutant.id]: expectedResult });
 
     // Act
-    const actualResult = await sut.check(expectedMutant);
+    const actualResult = await sut.check('', [expectedMutant]);
 
     // Assert
-    expect(actualResult).eq(expectedResult);
-    expect(innerChecker2.check).calledWithExactly(expectedMutant);
+    expect(actualResult[expectedMutant.id]).eq(expectedResult);
+    expect(innerChecker2.check).calledWithExactly('', [expectedMutant]);
   });
 
   it('should log a warning when the process crashed', async () => {
     // Arrange
     const error = new ChildProcessCrashedError(6, 'A bit flipped!', 3);
+    const expectedMutant = factory.mutant();
+
     innerChecker1.check.rejects(error);
-    innerChecker2.check.resolves(factory.checkResult());
+    innerChecker2.check.resolves({ [expectedMutant.id]: factory.checkResult() });
 
     // Act
-    await sut.check(factory.mutant());
+    await sut.check('', [expectedMutant]);
 
     // Assert
     expect(testInjector.logger.warn).calledWithExactly('Checker process [6] crashed with exit code 3. Retrying in a new process.', error);
@@ -74,11 +77,13 @@ describe(CheckerRetryDecorator.name, () => {
   it('should log a warning when the process ran out of memory', async () => {
     // Arrange
     const error = new OutOfMemoryError(6, 3);
+    const expectedMutant = factory.mutant();
+
     innerChecker1.check.rejects(error);
-    innerChecker2.check.resolves(factory.checkResult());
+    innerChecker2.check.resolves({ [expectedMutant.id]: factory.checkResult() });
 
     // Act
-    await sut.check(factory.mutant());
+    await sut.check('', [expectedMutant]);
 
     // Assert
     expect(testInjector.logger.warn).calledWithExactly('Checker process [6] ran out of memory. Retrying in a new process.');

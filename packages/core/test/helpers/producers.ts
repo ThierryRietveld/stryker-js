@@ -5,11 +5,11 @@ import { Logger } from 'log4js';
 import sinon from 'sinon';
 import { ReplaySubject } from 'rxjs';
 import { TestRunner } from '@stryker-mutator/api/test-runner';
-import { Checker } from '@stryker-mutator/api/check';
 
 import { I } from '@stryker-mutator/util';
 
 import { Pool, ConcurrencyTokenProvider } from '../../src/concurrent';
+import { CheckerResource } from '../../src/checker/checker-resource';
 
 export type Mutable<T> = {
   -readonly [K in keyof T]: T[K];
@@ -57,7 +57,7 @@ export function createTestRunnerPoolMock(): sinon.SinonStubbedInstance<I<Pool<Te
   };
 }
 
-export function createCheckerPoolMock(): sinon.SinonStubbedInstance<I<Pool<Checker>>> {
+export function createCheckerPoolMock(): sinon.SinonStubbedInstance<I<Pool<CheckerResource>>> {
   return {
     dispose: sinon.stub(),
     init: sinon.stub(),

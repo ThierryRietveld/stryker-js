@@ -24,7 +24,8 @@ const NO_EMIT_OPTIONS_FOR_SINGLE_PROJECT: Readonly<Partial<ts.CompilerOptions>> 
 const LOW_EMIT_OPTIONS_FOR_PROJECT_REFERENCES: Readonly<Partial<ts.CompilerOptions>> = Object.freeze({
   emitDeclarationOnly: true,
   noEmit: false,
-  declarationMap: false,
+  declaration: true,
+  declarationMap: true,
 });
 
 export function guardTSVersion(): void {
@@ -77,7 +78,7 @@ export function overrideOptions(parsedConfig: { config?: any }, useBuildMode: bo
  */
 export function retrieveReferencedProjects(parsedConfig: { config?: any }, fromDirName: string): string[] {
   if (Array.isArray(parsedConfig.config?.references)) {
-    return parsedConfig.config?.references.map((reference: ts.ProjectReference) =>
+    return parsedConfig.config.references.map((reference: ts.ProjectReference) =>
       path.resolve(fromDirName, ts.resolveProjectReferencePath(reference))
     );
   }

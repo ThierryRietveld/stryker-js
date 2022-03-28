@@ -3,7 +3,7 @@ import fs from 'fs';
 
 import { testInjector, factory, assertions } from '@stryker-mutator/test-helpers';
 import { expect } from 'chai';
-import { Location, Mutant } from '@stryker-mutator/api/core';
+import { Location, MutantTestCoverage } from '@stryker-mutator/api/core';
 import { CheckResult, CheckStatus } from '@stryker-mutator/api/check';
 
 import { createTypescriptChecker } from '../../src';
@@ -33,71 +33,83 @@ describe('Typescript checker on a single project', () => {
   });
 
   it('should be able to validate a mutant that does not result in an error', async () => {
-    const mutant = createMutant('todo.ts', 'TodoList.allTodos.push(newItem)', 'newItem? 42: 43');
+    const mutant = createMutantTestCoverage('todo.ts', 'TodoList.allTodos.push(newItem)', 'newItem? 42: 43');
     const expectedResult: CheckResult = { status: CheckStatus.Passed };
-    const actual = await sut.check(mutant);
-    expect(actual).deep.eq(expectedResult);
+    const actual = await sut.check([mutant]);
+    expect(actual[mutant.id]).deep.eq(expectedResult);
   });
 
   it('should be able invalidate a mutant that does result in a compile error', async () => {
-    const mutant = createMutant('todo.ts', 'TodoList.allTodos.push(newItem)', '"This should not be a string 🙄"');
-    const actual = await sut.check(mutant);
-    assertions.expectCompileError(actual);
-    expect(actual.reason).has.string('todo.ts(15,9): error TS2322');
+    const mutant = createMutantTestCoverage('todo.ts', 'TodoList.allTodos.push(newItem)', '"This should not be a string 🙄"');
+    const actual = await sut.check([mutant]);
+    const expectedResult: CheckResult = {
+      status: CheckStatus.CompileError,
+      reason: "testResources/single-project/src/todo.ts(15,9): error TS2322: Type 'string' is not assignable to type 'number'.\r\n",
+    };
+    assertions.expectCompileError(actual[mutant.id]);
+    expect(actual[mutant.id]).deep.eq(expectedResult);
   });
 
   it('should be able validate a mutant that does not result in a compile error after a compile error', async () => {
     // Arrange
-    const mutantCompileError = createMutant('todo.ts', 'TodoList.allTodos.push(newItem)', '"This should not be a string 🙄"');
-    const mutantWithoutError = createMutant('todo.ts', 'return TodoList.allTodos', '[]', 7);
+    const mutantCompileError = createMutantTestCoverage('todo.ts', 'TodoList.allTodos.push(newItem)', '"This should not be a string 🙄"');
+    const mutantWithoutError = createMutantTestCoverage('todo.ts', 'return TodoList.allTodos', '[]', 7);
     const expectedResult: CheckResult = {
       status: CheckStatus.Passed,
     };
 
     // Act
-    await sut.check(mutantCompileError);
-    const actual = await sut.check(mutantWithoutError);
+    await sut.check([mutantCompileError]);
+    const actual = await sut.check([mutantWithoutError]);
 
     // Assert
-    expect(actual).deep.eq(expectedResult);
+    expect(actual[mutantWithoutError.id]).deep.eq(expectedResult);
   });
 
   it('should be able to invalidate a mutant that results in an error in a different file', async () => {
-    const actual = await sut.check(createMutant('todo.ts', 'return totalCount;', ''));
-    assertions.expectCompileError(actual);
-    expect(actual.reason).has.string('todo.spec.ts(4,7): error TS2322');
+    const mutant = createMutantTestCoverage('todo.ts', 'return totalCount;', '');
+    const actual = await sut.check([mutant]);
+    const expectedResult: CheckResult = { status: CheckStatus.CompileError, reason: "testResources/single-project/src/todo.spec.ts(4,7): error TS2322: Type 'void' is not assignable to type 'number'.\r\n" };
+
+    assertions.expectCompileError(actual[mutant.id]);
+    expect(actual[mutant.id]).deep.equal(expectedResult);
   });
 
   it('should be able to validate a mutant after a mutant in a different file resulted in a transpile error', async () => {
     // Act
-    await sut.check(createMutant('todo.ts', 'return totalCount;', ''));
-    const result = await sut.check(createMutant('todo.spec.ts', "'Mow lawn'", "'this is valid, right?'"));
+    await sut.check([createMutantTestCoverage('todo.ts', 'return totalCount;', '')]);
+    const mutant = createMutantTestCoverage('todo.spec.ts', "'Mow lawn'", "'this is valid, right?'");
+    const result = await sut.check([mutant]);
 
     // Assert
     const expectedResult: CheckResult = {
       status: CheckStatus.Passed,
     };
-    expect(result).deep.eq(expectedResult);
+
+    expect(result[mutant.id]).deep.eq(expectedResult);
   });
 
   it('should be allow mutations in unrelated files', async () => {
     // Act
-    const result = await sut.check(createMutant('not-type-checked.js', 'bar', 'baz'));
+    const mutant = createMutantTestCoverage('not-type-checked.js', 'bar', 'baz');
+    const result = await sut.check([mutant]);
 
     // Assert
     const expectedResult: CheckResult = {
       status: CheckStatus.Passed,
     };
-    expect(result).deep.eq(expectedResult);
+
+    expect(result[mutant.id]).deep.eq(expectedResult);
   });
 
   it('should allow unused local variables (override options)', async () => {
-    const mutant = createMutant('todo.ts', 'TodoList.allTodos.push(newItem)', '42');
+    const mutant = createMutantTestCoverage('todo.ts', 'TodoList.allTodos.push(newItem)', '42');
     const expectedResult: CheckResult = {
       status: CheckStatus.Passed,
     };
-    const actual = await sut.check(mutant);
-    expect(actual).deep.eq(expectedResult);
+    const actual = await sut.check([mutant]);
+
+    expect(actual[mutant.id]).deep.eq(expectedResult);
   });
 });
 
@@ -107,7 +119,12 @@ const fileContents = Object.freeze({
   ['not-type-checked.js']: fs.readFileSync(resolveTestResource('src', 'not-type-checked.js'), 'utf8'),
 });
 
-function createMutant(fileName: 'not-type-checked.js' | 'todo.spec.ts' | 'todo.ts', findText: string, replacement: string, offset = 0): Mutant {
+function createMutantTestCoverage(
+  fileName: 'not-type-checked.js' | 'todo.spec.ts' | 'todo.ts',
+  findText: string,
+  replacement: string,
+  offset = 0
+): MutantTestCoverage {
   const lines = fileContents[fileName].split('\n');
   const lineNumber = lines.findIndex((line) => line.includes(findText));
   if (lineNumber === -1) {
@@ -118,7 +135,7 @@ function createMutant(fileName: 'not-type-checked.js' | 'todo.spec.ts' | 'todo.t
     start: { line: lineNumber, column: textColumn + offset },
     end: { line: lineNumber, column: textColumn + findText.length },
   };
-  return factory.mutant({
+  return factory.mutantTestCoverage({
     fileName: resolveTestResource('src', fileName),
     mutatorName: 'foo-mutator',
     location,

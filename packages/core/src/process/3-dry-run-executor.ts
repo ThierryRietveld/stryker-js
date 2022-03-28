@@ -16,7 +16,6 @@ import {
   ErrorDryRunResult,
 } from '@stryker-mutator/api/test-runner';
 import { lastValueFrom, of } from 'rxjs';
-import { Checker } from '@stryker-mutator/api/check';
 
 import { coreTokens } from '../di';
 import { Sandbox } from '../sandbox/sandbox';
@@ -29,6 +28,10 @@ import { ConcurrencyTokenProvider, Pool, createTestRunnerPool } from '../concurr
 import { FileMatcher } from '../config';
 import { InputFileCollection } from '../input/input-file-collection';
 
+import { CheckerFacade } from '../checker/checker-facade';
+
+import { CheckerResource } from '../checker/checker-resource';
+
 import { MutationTestContext } from './4-mutation-test-executor';
 import { MutantInstrumenterContext } from './2-mutant-instrumenter-executor';
 
@@ -37,7 +40,7 @@ const INITIAL_TEST_RUN_MARKER = 'Initial test run';
 export interface DryRunContext extends MutantInstrumenterContext {
   [coreTokens.sandbox]: I<Sandbox>;
   [coreTokens.mutants]: readonly Mutant[];
-  [coreTokens.checkerPool]: I<Pool<Checker>>;
+  [coreTokens.checkerPool]: I<Pool<CheckerResource>>;
   [coreTokens.concurrencyTokenProvider]: I<ConcurrencyTokenProvider>;
   [coreTokens.inputFiles]: InputFileCollection;
 }
@@ -101,7 +104,8 @@ export class DryRunExecutor {
       .provideValue(coreTokens.timeOverheadMS, timing.overhead)
       .provideValue(coreTokens.dryRunResult, dryRunResult)
       .provideClass(coreTokens.mutationTestReportHelper, MutationTestReportHelper)
-      .provideFactory(coreTokens.mutantsWithTestCoverage, findMutantTestCoverage);
+      .provideFactory(coreTokens.mutantsWithTestCoverage, findMutantTestCoverage)
+      .provideClass(coreTokens.checkerFacade, CheckerFacade);
   }
 
   private validateResultCompleted(runResult: DryRunResult): asserts runResult is CompleteDryRunResult {
